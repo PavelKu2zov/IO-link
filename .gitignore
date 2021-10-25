@@ -1,0 +1,12 @@
+FreeRtos/
+Debug/
+startup/startup_stm32f10x_cl.s
+startup/startup_stm32f10x_hd.s
+startup/
+settings/
+Backup of IO_Link_master.ewp
+IO_Link_master.dep
+IO_Link_master.ewd
+IO_Link_master.ewp
+IO_Link_master.ewt
+IO_Link_Master.eww
