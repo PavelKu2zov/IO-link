@@ -68,9 +68,22 @@
 // Definitions of local (private) constants
 //**************************************************************************************************
 
-// None.
+// gpio for Io-Link
 
+#defein PL_PORT_IO_LINK        GPIOA 
+#define PL_PIN_TRANSMMITER     GPIO_Pin_ 
+#define PL_PIN_RECEIVE         GPIO_Pin_ 
 
+#define PL_USART_IO_LINK       USART2
+
+// Baudrate Io-Link interface
+// COM1 4800    bit/s
+// COM2 38400   bit/s
+// COM3 230400  bit/s 
+#define PL_BAUDRATE_COM1       (4800)              
+#define PL_BAUDRATE_COM2       (38400)              
+#define PL_BAUDRATE_COM3       (230400)
+              
 //**************************************************************************************************
 // Definitions of static global (private) variables
 //**************************************************************************************************
@@ -102,9 +115,19 @@
 //--------------------------------------------------------------------------------------------------
 // @Parameters    None.
 //**************************************************************************************************
-void PL_Init(void *pvParameters)
+void PL_Init(void)
 {
-
+    USART_DeInit(USART_IO_LINK);
+    
+    USART_InitTypeDef USART_InitStruct;
+    USART_InitStruct.USART_BaudRate = PL_BAUDRATE_COM3;
+    USART_InitStruct.USART_WordLength = USART_WordLength_8b;
+    USART_InitStruct.USART_StopBits = USART_StopBits_1;
+    USART_InitStruct.USART_Parity = USART_Parity_Even;
+    USART_InitStruct.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;
+    USART_InitStruct.USART_HardwareFlowControl = USART_HardwareFlowControl_None; 
+    USART_Init(USART_IO_LINK, &USART_InitStruct);
+    
 }// end of PL_Init()
 
 
@@ -173,6 +196,14 @@ void PL_WakeUP( void )
 //**************************************************************************************************
 void PL_SetMode(PL_TARGET_MODE mode);
 {
+    if (INACTIVE == mode)
+    {
+        GPIO_InitTypeDef GPIO_InitStruct;
+        GPIO_InitStruct.GPIO_Pin = PL_PIN_TRANSMMITER | PL_PIN_RECEIVE;
+        GPIO_InitStruct.GPIO_Mode = GPIO_Mode_IN_FLOATING;
+        GPIO_InitStruct.GPIO_Speed = GPIO_Speed_2MHz;   
+        GPIO_Init(PL_PORT_IO_LINK, &GPIO_InitStruct);
+    }
 	
 }
 // end of PL_SetMode()
@@ -195,5 +226,8 @@ void PL_Transfer( void )
 	
 }
 // end of PL_Transfer()
+
+
+
 
 //****************************************** end of file *******************************************

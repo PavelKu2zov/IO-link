@@ -68,7 +68,7 @@ uint8_t PL_aData[PL_SIZE_DATA];
 //**************************************************************************************************
 
 // Init Physical layer
-void PL_Init();
+void PL_Init(void);
 
 // Task of Physikal layer
 void PL_Task(void *pvParameters)
