@@ -196,7 +196,6 @@ void PL_WakeUP( void )
 		PL_Delay(PL_TWU);
 		GPIO_WriteBit(PL_PORT_IO_LINK, PL_PIN_TRANSMMITER, Bit_RESET);
 	}
-	
 }
 // end of PL_WakeUP()
 
