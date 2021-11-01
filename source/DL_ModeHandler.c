@@ -1,33 +1,33 @@
 //**************************************************************************************************
-// @Module        DL_MES_HANDLER
-// @Filename      DL_MessageHandler.c
+// @Module        DL_MODE_HANDLER
+// @Filename      DL_ModeHandler.c
 //--------------------------------------------------------------------------------------------------
-// @Platform      stm32f103
+// @Platform      PLATFORM_NAME
 //--------------------------------------------------------------------------------------------------
-// @Compatible    
+// @Compatible    COMPATIBLE_PROCESSOR_MODULE
 //--------------------------------------------------------------------------------------------------
-// @Description   Implementation of the DL Message Handler functionality.
-//
+// @Description   Implementation of the DL_MODE_HANDLER functionality.
+//                
 //
 //                Abbreviations:
 //                  DL - Data link layer
+//                  
 //
-//
-//                 Global (public) functions:
-//
-//
+//                Global (public) functions:
+//                  MODULE_functionZero()
+//                  MODULE_functionOne()
 //
 //                Local (private) functions:
-//
-//
+//                  MODULE_functionTwo()
+//                  MODULE_functionThree()
 //
 //--------------------------------------------------------------------------------------------------
 // @Version       1.0.0
 //--------------------------------------------------------------------------------------------------
-// @Date          30.08.2021
+// @Date          XX.XX.XXXX
 //--------------------------------------------------------------------------------------------------
 // @History       Version  Author      Comment
-// XX.XX.XXXX     1.0.0    KPS         First release.
+// XX.XX.XXXX     1.0.0    XXX         First release.
 //**************************************************************************************************
 
 
@@ -37,62 +37,87 @@
 //**************************************************************************************************
 
 // Native header
-#include "DL_MessageHandler_drv.h"
+#include "DL_ModeHandler_drv.h"
 #include "FreeRTOS.h"
 #include "task.h"
 #include "main.h"
+
 
 
 //**************************************************************************************************
 // Verification of the imported configuration parameters
 //**************************************************************************************************
 
-// None.
-
+//None.
 
 //**************************************************************************************************
 // Definitions of global (public) variables
 //**************************************************************************************************
 
-// None.
+//None.
+
 
 
 //**************************************************************************************************
 // Declarations of local (private) data types
 //**************************************************************************************************
 
-typedef enum DL_MES_TypeStateMachine_enum
+// State machine of DL mode handler
+typedef enum DL_MODE_TypeStateMachine_enum
 {
-    DL_MES_Inactive_0=0,
-    DL_MES_AwaitReply_1,
-    DL_MES_Startup_2,
-    DL_MES_Response_3,
-    DL_MES_Preoperate_6,
-    DL_MES_GetOD_7,
-    DL_MES_Response_8,
-    DL_MES_Operate_12,
-    DL_MES_GetPD_13
-}DL_MES_TypeStateMachine;
+    DL_MODE_Idle_0=0,
+    DL_MODE_WURQ_5,
+    DL_MODE_ComRequestCOM3_6,
+    DL_MODE_ComRequestCOM2_7,
+    DL_MODE_ComRequestCOM1_8,
+    DL_MODE_Retry_9,
+    DL_MODE_Startup_2,
+    DL_MODE_PreOperate_3,
+    DL_MODE_Operate_4
+}DL_MODE_StateMachine;
+
 
 
 //**************************************************************************************************
 // Definitions of local (private) constants
 //**************************************************************************************************
 
-// None.
-              
+// [Description...]
+#define MODULE_CONST_TWO    (0x01U)
+
+// [Description...]
+#define MODULE_CONST_THREE  (-1)
+
+// [Description...]
+static const DATA_TYPE MODULE_constFour = 0x02U;
+
+
+
 //**************************************************************************************************
 // Definitions of static global (private) variables
 //**************************************************************************************************
 
-static DL_MES_TypeStateMachine DL_MES_StateMachine; 
+// [Description...]
+static DATA_TYPE MODULE_variableTwo;
+
+// [Description...]
+static DATA_TYPE MODULE_variableThree;
+
 
 
 //**************************************************************************************************
 // Declarations of local (private) functions
 //**************************************************************************************************
 
-// None.
+// [Description...]
+static DATA_TYPE MODULE_FunctionTwo(DATA_TYPE parameterZero,
+                                    DATA_TYPE parameterOne);
+
+// [Description...]
+static DATA_TYPE MODULE_FunctionThree(DATA_TYPE parameterZero,
+                                      DATA_TYPE parameterOne,
+                                      DATA_TYPE parameterTwo);
+
 
 
 //**************************************************************************************************
@@ -101,55 +126,88 @@ static DL_MES_TypeStateMachine DL_MES_StateMachine;
 //==================================================================================================
 //**************************************************************************************************
 
+
+
 //**************************************************************************************************
-// @Function      DL_MES_Init()
+// @Function      MODULE_FunctionZero()
 //--------------------------------------------------------------------------------------------------
-// @Description   Init DL Message handler
+// @Description   [description...]
 //--------------------------------------------------------------------------------------------------
-// @Notes         None.
+// @Notes
 //--------------------------------------------------------------------------------------------------
-// @ReturnValue   None.
+// @ReturnValue   returnValue - [description...]
 //--------------------------------------------------------------------------------------------------
-// @Parameters    None.
+// @Parameters    parameterZero - [description...]
 //**************************************************************************************************
-void DL_MES_Init(void)
+DATA_TYPE MODULE_FunctionZero(DATA_TYPE parameterZero)
 {
-    TIM_DeInit(DL_Timer);
-	TIM_TimeBaseInitTypeDef TIM_TimeBaseInitStruct;
-    TIM_TimeBaseInitStruct.TIM_Period = DL_MES_TIMER_PERIOD;
-	TIM_TimeBaseInitStruct.TIM_Prescaler = PL_TIMER_PRESCALER;
-	TIM_TimeBaseInitStruct.TIM_ClockDivision = TIM_CKD_DIV1;
-	TIM_TimeBaseInitStruct.TIM_CounterMode = TIM_CounterMode_Up;
-	TIM_TimeBaseInitStruct.TIM_RepetitionCounter = 0x0000;
-	TIM_TimeBaseInit(DL_MES_Timer, &TIM_TimeBaseInitStruct);
-	
-    DL_MES_StateMachine = DL_MES_Inactive_0;
+    DATA_TYPE returnValue;
     
-}// end of DL_MES_Init()
+    // [Description...]
+    if (a > b)
+    {
+        moreCnt++;
+    }
+    else if (a < b)
+    {
+        lessCnt++;
+    }
+    else
+    {
+        equalCnt++;
+    }
+    
+    return returnValue;
+    
+} // end of MODULE_FunctionZero()
 
 
 
 //**************************************************************************************************
-// @Function      DL_MES_Task()
+// @Function      MODULE_FunctionOne()
 //--------------------------------------------------------------------------------------------------
-// @Description   task of Data link layer
+// @Description   [description...]
 //--------------------------------------------------------------------------------------------------
-// @Notes         None.
+// @Notes
+//--------------------------------------------------------------------------------------------------
+// @ReturnValue   returnValue - [description...]
+//--------------------------------------------------------------------------------------------------
+// @Parameters    parameterZero - [description...]
+//                parameterOne  - [description...]
+//**************************************************************************************************
+DATA_TYPE MODULE_FunctionOne(DATA_TYPE parameterZero,
+                             DATA_TYPE parameterOne)
+{
+    DATA_TYPE returnValue;
+    
+    // [Description...]
+    DATA_TYPE idx = 0;
+    for ( ; idx < MAX; idx++)
+    {
+        arrayResult[idx] = arrayInitial[idx];
+    }
+    
+    return returnValue;
+    
+} // end of MODULE_FunctionOne()
+
+
+
+//**************************************************************************************************
+// @Function      MODULE_ISRx()
+//--------------------------------------------------------------------------------------------------
+// @Description   [description...]
+//--------------------------------------------------------------------------------------------------
+// @Notes
 //--------------------------------------------------------------------------------------------------
 // @ReturnValue   None.
 //--------------------------------------------------------------------------------------------------
 // @Parameters    None.
 //**************************************************************************************************
-void DL_MES_Task(void *pvParameters)
+INTERRUPT(VectorNumber) void MODULE_ISRx()
 {
-	for(;;)
-	{
-		//Wait SemaphorePL
-		xSemaphoreTake( xSemaphorePL, portMAX_DELAY );
-		
-		
-	}
-}// end of DL_MES_Task()
+
+} // end of MODULE_ISR0()
 
 
 
@@ -159,90 +217,71 @@ void DL_MES_Task(void *pvParameters)
 //==================================================================================================
 //**************************************************************************************************
 
+
+
 //**************************************************************************************************
-// @Function      
+// @Function      MODULE_FunctionTwo()
 //--------------------------------------------------------------------------------------------------
-// @Description   The PL-WakeUp service initiates or indicates a specific sequence which prepares 
-//			      the Physical Layer to send and receive communication requests.
+// @Description   [description...]
 //--------------------------------------------------------------------------------------------------
-// @Notes         None.
+// @Notes
 //--------------------------------------------------------------------------------------------------
-// @ReturnValue   None.
+// @ReturnValue   returnValue - [description...]
 //--------------------------------------------------------------------------------------------------
-// @Parameters    None.
+// @Parameters    parameterZero - [description...]
+//                parameterOne  - [description...]
 //**************************************************************************************************
-void ( void )
+static DATA_TYPE MODULE_FunctionTwo(DATA_TYPE parameterZero,
+                                    DATA_TYPE parameterOne)
 {
-		GPIO_WriteBit(PL_PORT_IO_LINK, PL_PIN_TRANSMMITER, Bit_RESET);
-	}
-}
-// end of ()
+    DATA_TYPE returnValue;
+    
+    // [Description...]
+    switch (expression)
+    {
+        case CASE_ONE:
+            caseOneCnt++;
+            break;
+
+        case CASE_TWO:
+            caseTwoCnt++;
+            break;
+
+        default:
+            caseDefaultCnt++;
+            break;
+    } // end of switch (expression)
+    
+    return returnValue;
+    
+} // end of MODULE_FunctionTwo()
 
 
 
 //**************************************************************************************************
-// @Function      
+// @Function      MODULE_FunctionThree()
 //--------------------------------------------------------------------------------------------------
-// @Description   SetMode service is used to setup the electrical characteristics and configurations 
-//				  of the Physical Layer.
+// @Description   [description...]
 //--------------------------------------------------------------------------------------------------
-// @Notes         None.
+// @Notes
 //--------------------------------------------------------------------------------------------------
-// @ReturnValue   None.
+// @ReturnValue   returnValue - [description...]
 //--------------------------------------------------------------------------------------------------
-// @Parameters    mode - INACTIVE,DI,DO,COM1,COM2,COM3
+// @Parameters    parameterZero - [description...]
+//                parameterOne  - [description...]
+//                parameterTwo  - [description...]
 //**************************************************************************************************
-void ( );
+static DATA_TYPE MODULE_FunctionThree(DATA_TYPE parameterZero,
+                                      DATA_TYPE parameterOne,
+                                      DATA_TYPE parameterTwo)
 {
-
-	
-}
-// end of ()
-
-
-//**************************************************************************************************
-// @Function      
-//--------------------------------------------------------------------------------------------------
-// @Description   The PL-Transfer service is used to exchange the SDCI data between Data Link Layer 
-//				  and  Physical Layer
-//--------------------------------------------------------------------------------------------------
-// @Notes         None.
-//--------------------------------------------------------------------------------------------------
-// @ReturnValue   None.
-//--------------------------------------------------------------------------------------------------
-// @Parameters    None.
-//**************************************************************************************************
-void ( void )
-{
-	
-}
-// end of ()
-
-
-
-//**************************************************************************************************
-// @Function      PL_Delay
-//--------------------------------------------------------------------------------------------------
-// @Description   Delay for PL. It bases on PL_TIMER
-//--------------------------------------------------------------------------------------------------
-// @Notes         None.
-//--------------------------------------------------------------------------------------------------
-// @ReturnValue   None.
-//--------------------------------------------------------------------------------------------------
-// @Parameters    time in us
-//**************************************************************************************************
-void PL_Delay( uint16_t time )
-{
-	TIM_Cmd(PL_Timer, DISABLE);
-	TIM_ClearFlag(PL_Timer, TIM_FLAG_Update);
-	TIM_SetAutoreload(PL_TIMER, time*PL_K);
-	//wait
-	TIM_Cmd(PL_Timer, ENABLE);
-	while(RESET != TIM_GetFlagStatus(PL_Timer, TIM_FLAG_Update));
-	TIM_Cmd(PL_Timer, DISABLE);
-}
-// end of PL_Delay()
-
+    DATA_TYPE returnValue;
+    
+    // [Place code here]
+    
+    return returnValue;
+    
+} // end of MODULE_FunctionThree()
 
 
 
