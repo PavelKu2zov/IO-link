@@ -97,7 +97,7 @@
 // Definitions of static global (private) variables
 //**************************************************************************************************
 
-// None.
+PL_TARGET_MODE PL_TargetMode; 
 
 
 //**************************************************************************************************
@@ -152,11 +152,39 @@ void PL_Init(void)
 //**************************************************************************************************
 void PL_Task(void *pvParameters)
 {
+    portBASE_TYPE xStatus;
+    PL_MES_QUEUE PL_receiveMes;
 	for(;;)
 	{
-		//Wait SemaphorePL
-		xSemaphoreTake( xSemaphorePL, portMAX_DELAY );
+		//Wait message
+		xStatus = xQueueReceive( xPL_Queue, &PL_receiveMes, portMAX_DELAY );
 		
+        if ( pdPASS == xStatus )
+        {
+            if (PL_WAKE_UP == PL_receiveMes)
+            {
+                PL_WakeUP();
+            }
+            else if (PL_TRANSFER_COM1 == PL_receiveMes)
+            {
+                PL_SetMode(COM1);
+                PL_Transfer();
+            }
+            else if (PL_TRANSFER_COM2 == PL_receiveMes)
+            {
+                PL_SetMode(COM2);
+                PL_Transfer();
+            }
+            else if (PL_TRANSFER_COM3 == PL_receiveMes)
+            {
+                PL_SetMode(COM3);
+                PL_Transfer();
+            }
+            else if (PL_SET_MODE== PL_receiveMes)
+            {
+                ;
+            }
+        }
 		
 	}
 }// end of PL_Task()
@@ -283,7 +311,7 @@ void PL_SetMode(PL_TARGET_MODE mode);
 		
 		USART_Init(USART_IO_LINK, &USART_InitStruct);
 	}
-	
+	PL_TargetMode = mode;
 }
 // end of PL_SetMode()
 
@@ -302,7 +330,7 @@ void PL_SetMode(PL_TARGET_MODE mode);
 //**************************************************************************************************
 void PL_Transfer( void )
 {
-	
+
 }
 // end of PL_Transfer()
 

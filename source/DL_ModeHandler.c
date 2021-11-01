@@ -62,6 +62,17 @@
 // Declarations of local (private) data types
 //**************************************************************************************************
 
+
+// Вынести во внешний заголовочны файл(общий)
+typedef enum DL_MODE_Mode_enum
+{
+    DL_MODE_INACTIVE=0,
+    DL_MODE_STARTUP,
+    DL_MODE_PREOPERATE,
+    DL_MODE_OPERATE
+}DL_MODE_Mode;
+
+
 // State machine of DL mode handler
 typedef enum DL_MODE_TypeStateMachine_enum
 {
@@ -74,7 +85,7 @@ typedef enum DL_MODE_TypeStateMachine_enum
     DL_MODE_Startup_2,
     DL_MODE_PreOperate_3,
     DL_MODE_Operate_4
-}DL_MODE_StateMachine;
+}DL_MODE_TypeStateMachine;
 
 
 
@@ -82,42 +93,25 @@ typedef enum DL_MODE_TypeStateMachine_enum
 // Definitions of local (private) constants
 //**************************************************************************************************
 
-// [Description...]
-#define MODULE_CONST_TWO    (0x01U)
-
-// [Description...]
-#define MODULE_CONST_THREE  (-1)
-
-// [Description...]
-static const DATA_TYPE MODULE_constFour = 0x02U;
-
+// None.
 
 
 //**************************************************************************************************
 // Definitions of static global (private) variables
 //**************************************************************************************************
 
-// [Description...]
-static DATA_TYPE MODULE_variableTwo;
+DL_MODE_TypeStateMachine DL_MODE_StateMachine;
 
-// [Description...]
-static DATA_TYPE MODULE_variableThree;
+DL_MODE_Mode DL_MODE_CurrentMode;
 
+DL_MODE_Mode DL_MODE_NextMode;
 
 
 //**************************************************************************************************
 // Declarations of local (private) functions
 //**************************************************************************************************
 
-// [Description...]
-static DATA_TYPE MODULE_FunctionTwo(DATA_TYPE parameterZero,
-                                    DATA_TYPE parameterOne);
-
-// [Description...]
-static DATA_TYPE MODULE_FunctionThree(DATA_TYPE parameterZero,
-                                      DATA_TYPE parameterOne,
-                                      DATA_TYPE parameterTwo);
-
+// None.
 
 
 //**************************************************************************************************
@@ -129,37 +123,42 @@ static DATA_TYPE MODULE_FunctionThree(DATA_TYPE parameterZero,
 
 
 //**************************************************************************************************
-// @Function      MODULE_FunctionZero()
+// @Function      DL_MODE_Task()
 //--------------------------------------------------------------------------------------------------
-// @Description   [description...]
+// @Description   task of DL mode handler
 //--------------------------------------------------------------------------------------------------
-// @Notes
+// @Notes         None.
 //--------------------------------------------------------------------------------------------------
-// @ReturnValue   returnValue - [description...]
+// @ReturnValue   None.
 //--------------------------------------------------------------------------------------------------
-// @Parameters    parameterZero - [description...]
+// @Parameters    None.
 //**************************************************************************************************
-DATA_TYPE MODULE_FunctionZero(DATA_TYPE parameterZero)
+void DL_MODE_Task(void *pvParameters)
 {
-    DATA_TYPE returnValue;
-    
-    // [Description...]
-    if (a > b)
-    {
-        moreCnt++;
-    }
-    else if (a < b)
-    {
-        lessCnt++;
-    }
-    else
-    {
-        equalCnt++;
-    }
-    
-    return returnValue;
-    
-} // end of MODULE_FunctionZero()
+	for(;;)
+	{
+		//Wait Semaphore from SM
+		xSemaphoreTake( xDL_SetMode, portMAX_DELAY );
+		
+        //Get next mode
+        DL_MODE_NextMode =  DL_MODE_GetNextMode();
+        
+        // move in state machine
+        switch(DL_MODE_StateMachine)
+        {
+            case DL_MODE_Idle_0:
+                {
+                    if (DL_MODE_STARTUP == DL_MODE_NextMode)
+                    {
+                        DL_MODE_EstablishCom();
+                        
+                    }
+                }
+                break;
+        }
+		
+	}
+}// end of DL_MODE_Task()
 
 
 
@@ -194,24 +193,6 @@ DATA_TYPE MODULE_FunctionOne(DATA_TYPE parameterZero,
 
 
 //**************************************************************************************************
-// @Function      MODULE_ISRx()
-//--------------------------------------------------------------------------------------------------
-// @Description   [description...]
-//--------------------------------------------------------------------------------------------------
-// @Notes
-//--------------------------------------------------------------------------------------------------
-// @ReturnValue   None.
-//--------------------------------------------------------------------------------------------------
-// @Parameters    None.
-//**************************************************************************************************
-INTERRUPT(VectorNumber) void MODULE_ISRx()
-{
-
-} // end of MODULE_ISR0()
-
-
-
-//**************************************************************************************************
 //==================================================================================================
 // Definitions of local (private) functions
 //==================================================================================================
@@ -220,7 +201,7 @@ INTERRUPT(VectorNumber) void MODULE_ISRx()
 
 
 //**************************************************************************************************
-// @Function      MODULE_FunctionTwo()
+// @Function      DL_MODE_EstablishCom()
 //--------------------------------------------------------------------------------------------------
 // @Description   [description...]
 //--------------------------------------------------------------------------------------------------
@@ -231,30 +212,12 @@ INTERRUPT(VectorNumber) void MODULE_ISRx()
 // @Parameters    parameterZero - [description...]
 //                parameterOne  - [description...]
 //**************************************************************************************************
-static DATA_TYPE MODULE_FunctionTwo(DATA_TYPE parameterZero,
-                                    DATA_TYPE parameterOne)
+static void DL_MODE_EstablishCom(void)
 {
-    DATA_TYPE returnValue;
+    // Wake Up request to PL
+    DL_MODE_WURQ(void);    
     
-    // [Description...]
-    switch (expression)
-    {
-        case CASE_ONE:
-            caseOneCnt++;
-            break;
-
-        case CASE_TWO:
-            caseTwoCnt++;
-            break;
-
-        default:
-            caseDefaultCnt++;
-            break;
-    } // end of switch (expression)
-    
-    return returnValue;
-    
-} // end of MODULE_FunctionTwo()
+} // end of DL_MODE_EstablishCom()
 
 
 
