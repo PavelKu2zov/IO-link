@@ -37,17 +37,6 @@ typedef enum
 	PL_TRANSFER
 }PL_SERVICE_enum;
 
-// Target mode
-typedef enum PL_TARGET_MODE_enum
-{
-	INACTIVE=0,
-	DI,
-	D,
-	COM1,
-	COM2,
-	COM3
-}PL_TARGET_MODE;
-
 
 // type message for queue
 typedef enum PL_TYPE_MES_QUEUE_enum
@@ -71,34 +60,23 @@ typedef struct PL_MES_QUEUE_struct
 // Definitions of global (public) constants
 //**************************************************************************************************
 
-#define PL_SIZE_DATA		(uint16_t)(255) 		
+// None.
 
 
 //**************************************************************************************************
 // Declarations of global (public) variables
 //**************************************************************************************************
 
-uint8_t PL_aData[PL_SIZE_DATA];
+// None.
 
 
 //**************************************************************************************************
 // Declarations of global (public) functions
 //**************************************************************************************************
 
-// Init Physical layer
-void PL_Init(void);
 
 // Task of Physikal layer
 void PL_Task(void *pvParameters)
-
-// Wake up service
-void PL_WakeUP(void);
-
-// Set target mode service
-void PL_SetMode(PL_TARGET_MODE mode);
-
-// Transfer data service
-void PL_Transfer( void );
 
 
 #ifndef PL_DRV_H

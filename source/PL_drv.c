@@ -61,18 +61,40 @@
 // Declarations of local (private) data types
 //**************************************************************************************************
 
-// None.
+typedef enum 
+{
+	RESULT_NOT_OK=0,
+	RESULT_OK
+}RESULT_FUN;
 
+
+// Services of Physical layer 
+typedef enum PL_TIMER_STATE_enum
+{
+    TIMEOUT = 0,
+    RUN,
+	STOP
+}PL_TIMER_STATE;
+
+// Target mode
+typedef enum PL_TARGET_MODE_enum
+{
+	INACTIVE=0,
+	DI,
+	D,
+	COM1,
+	COM2,
+	COM3
+}PL_TARGET_MODE;
 
 //**************************************************************************************************
 // Definitions of local (private) constants
 //**************************************************************************************************
 
 // gpio for Io-Link
-
 #defein PL_PORT_IO_LINK        GPIOA 
-#define PL_PIN_TRANSMMITER     GPIO_Pin_ 
-#define PL_PIN_RECEIVE         GPIO_Pin_ 
+#define PL_PIN_TRANSMMITER     GPIO_Pin_2 
+#define PL_PIN_RECEIVE         GPIO_Pin_3
 
 #define PL_USART_IO_LINK       USART2
 
@@ -84,28 +106,47 @@
 #define PL_BAUDRATE_COM2       (38400)              
 #define PL_BAUDRATE_COM3       (230400)
 
-// Time settings in us
+// Times
+
+// Duration of Master's wake-up current pulse 75..85 us
 #define PL_TWU				   (80)
+
+// Receive enable delay max 500 us
 #define PL_TREN				   (500)
 
-// Tbit - измеряется в тиках TIM5, source 36MHz
-#define PL_Tbit_COM3           (156)
-#define PL_Tbit_COM2           (937)
-#define PL_Tbit_COM1           (7500)
+// Tbit - time of one bit in us 
+#define PL_Tbit_COM3           (4)//4,34 us
+#define PL_Tbit_COM2           (26)//26,04 us
+#define PL_Tbit_COM1           (208)//208,33 us
 
-#define PL_Tdmt_K              (30)
+#define PL_Tdmt_K              (33)// 27...37
 
-#define PL_Tdmt_COM3           (PL_Tdmt_K*PL_Tbit_COM3)
-#define PL_Tdmt_COM2           (PL_Tdmt_K*PL_Tbit_COM2)
-#define PL_Tdmt_COM1           (PL_Tdmt_K*PL_Tbit_COM1)
+// Master message delay
+// min,max 117,18..159,47 us
+#define PL_Tdmt_COM3           (PL_Tdmt_K*PL_Tbit_COM3)//132 us
 
-// Number hardware timer
+// min,max 703,08..963,48 us
+#define PL_Tdmt_COM2           (PL_Tdmt_K*PL_Tbit_COM2)//858 us
+
+// min,max 5624,91..7708,21 us
+#define PL_Tdmt_COM1           (PL_Tdmt_K*PL_Tbit_COM1)//6864 us
+
+//Wake-up retry delay 30..50 ms
+#define PL_Tdwu				   (40000)
+
+//Wake-up retry count 
+#define PL_Nwu				  (3)	
+
+//Device detection time 0,5...1 s
+#define PL_Tds				   ()	
+
+// Number hardware timer tick = 1 us
 #define PL_TIMER		      (TIM5)
-#define PL_TIMER_PERIOD		  ()
-#define PL_TIMER_PRESCALER    ()
- 
+#define PL_TIMER_PERIOD		  (0xffff)
+#define PL_TIMER_PRESCALER    (36)
 
 #define PL_SIZE_BUFF_DATA_TO_TR     (64)
+#define PL_SIZE_BUFF_DATA_REC       (64)
               
 //**************************************************************************************************
 // Definitions of static global (private) variables
@@ -113,13 +154,40 @@
 
 PL_TARGET_MODE PL_TargetMode;
 uint8_t dataToTransfer[PL_SIZE_BUFF_DATA_TO_TR]; 
+uint8_t dataReceive[PL_SIZE_BUFF_DATA_REC]; 
+
+PL_TIMER_STATE PL_timerState = STOP;
 
 
 //**************************************************************************************************
 // Declarations of local (private) functions
 //**************************************************************************************************
 
-// None.
+// Init PL
+static void PL_Init(void);
+
+// Send Wake Up sequences
+static RESULT_FUN PL_WakeUP(void);
+
+// Set mode PL
+static void PL_SetMode(PL_TARGET_MODE mode);
+
+// Transfer message 
+static void PL_Transfer( uint8_t* data,uint16_t size );
+
+// receive message
+static RESULT_FUN PL_Receive( uint8_t* data, uint16_t size, uint16_t timeOut );
+
+// start timer
+static void PL_StartTimer( uint16_t time );
+
+// Get status timer
+static void PL_GetStatusTimer( void );
+
+// calculate CKT
+static uint8_t PL_CalCKT( uint8_t* data, const uint16_t size, uint8_t typeMseq );
+
+
 
 
 //**************************************************************************************************
@@ -127,30 +195,6 @@ uint8_t dataToTransfer[PL_SIZE_BUFF_DATA_TO_TR];
 // Definitions of global (public) functions
 //==================================================================================================
 //**************************************************************************************************
-
-//**************************************************************************************************
-// @Function      PL_Init()
-//--------------------------------------------------------------------------------------------------
-// @Description   Init PL
-//--------------------------------------------------------------------------------------------------
-// @Notes         None.
-//--------------------------------------------------------------------------------------------------
-// @ReturnValue   None.
-//--------------------------------------------------------------------------------------------------
-// @Parameters    None.
-//**************************************************************************************************
-void PL_Init(void)
-{
-    TIM_DeInit(PL_Timer);
-	TIM_TimeBaseInitTypeDef TIM_TimeBaseInitStruct;
-    TIM_TimeBaseInitStruct.TIM_Period = PL_TIMER_PERIOD;
-	TIM_TimeBaseInitStruct.TIM_Prescaler = PL_TIMER_PRESCALER;
-	TIM_TimeBaseInitStruct.TIM_ClockDivision = TIM_CKD_DIV1;
-	TIM_TimeBaseInitStruct.TIM_CounterMode = TIM_CounterMode_Up;
-	TIM_TimeBaseInitStruct.TIM_RepetitionCounter = 0x0000;
-	TIM_TimeBaseInit(PL_Timer, &TIM_TimeBaseInitStruct);
-	
-}// end of PL_Init()
 
 
 
@@ -178,27 +222,16 @@ void PL_Task(void *pvParameters)
         {
             if (PL_WAKE_UP == PL_receiveMes)
             {
-                PL_WakeUP();
+				for (int32_t i=0;i<PL_Nwu;i++)
+				{
+					if (RESULT_OK == PL_WakeUP())
+					{
+						break;
+					}
+				}
+				
             }
-            else if (PL_TRANSFER_COM1 == PL_receiveMes)
-            {
-                PL_SetMode(COM1);
-                PL_Transfer();
-            }
-            else if (PL_TRANSFER_COM2 == PL_receiveMes)
-            {
-                PL_SetMode(COM2);
-                PL_Transfer();
-            }
-            else if (PL_TRANSFER_COM3 == PL_receiveMes)
-            {
-                PL_SetMode(COM3);
-                PL_Transfer();
-            }
-            else if (PL_SET_MODE== PL_receiveMes)
-            {
-                ;
-            }
+ 
         }
 		
 	}
@@ -212,6 +245,34 @@ void PL_Task(void *pvParameters)
 //==================================================================================================
 //**************************************************************************************************
 
+
+
+//**************************************************************************************************
+// @Function      PL_Init()
+//--------------------------------------------------------------------------------------------------
+// @Description   Init PL
+//--------------------------------------------------------------------------------------------------
+// @Notes         None.
+//--------------------------------------------------------------------------------------------------
+// @ReturnValue   None.
+//--------------------------------------------------------------------------------------------------
+// @Parameters    None.
+//**************************************************************************************************
+static void PL_Init(void)
+{
+    TIM_DeInit(PL_Timer);
+	TIM_TimeBaseInitTypeDef TIM_TimeBaseInitStruct;
+    TIM_TimeBaseInitStruct.TIM_Period = PL_TIMER_PERIOD;
+	TIM_TimeBaseInitStruct.TIM_Prescaler = PL_TIMER_PRESCALER;
+	TIM_TimeBaseInitStruct.TIM_ClockDivision = TIM_CKD_DIV1;
+	TIM_TimeBaseInitStruct.TIM_CounterMode = TIM_CounterMode_Up;
+	TIM_TimeBaseInitStruct.TIM_RepetitionCounter = 0x0000;
+	TIM_TimeBaseInit(PL_Timer, &TIM_TimeBaseInitStruct);
+	
+}// end of PL_Init()
+
+
+
 //**************************************************************************************************
 // @Function      PL_WakeUp
 //--------------------------------------------------------------------------------------------------
@@ -224,11 +285,13 @@ void PL_Task(void *pvParameters)
 //--------------------------------------------------------------------------------------------------
 // @Parameters    None.
 //**************************************************************************************************
-void PL_WakeUP( void )
+static RESULT_FUN PL_WakeUP( void )
 {
+	RESULT_FUN result = RESULT_NOT_OK;
 	// Set mode SIO
 	PL_SetMode(D);
 	
+	// Make impuls WURQ
 	if (Bit_SET == GPIO_ReadOutputDataBit(PL_PORT_IO_LINK, PL_PIN_TRANSMMITER))
 	{
 		GPIO_WriteBit(PL_PORT_IO_LINK, PL_PIN_TRANSMMITER, Bit_RESET);
@@ -236,22 +299,67 @@ void PL_WakeUP( void )
 	else if (Bit_RESET == GPIO_ReadOutputDataBit(PL_PORT_IO_LINK, PL_PIN_TRANSMMITER))
 	{
 		GPIO_WriteBit(PL_PORT_IO_LINK, PL_PIN_TRANSMMITER, Bit_RES);
-		PL_Delay(PL_TWU);
+		PL_StartTimer( PL_TWU );
+		while( RUN == PL_timerState )
+		{
+			PL_GetStatusTimer();
+		}
 		GPIO_WriteBit(PL_PORT_IO_LINK, PL_PIN_TRANSMMITER, Bit_RESET);
+		
+		PL_StartTimer( PL_TREN );
+		while( RUN == PL_timerState )
+		{
+			PL_GetStatusTimer();
+		}
 	}
     
+	// Send test messages
+	
     // Wait Tdmt_COM3
-    PL_Delay( PL_Tdmt_COM3 );
+	PL_StartTimer( PL_Tdmt_COM3 );
+	while( RUN == PL_timerState )
+	{
+		PL_GetStatusTimer();
+	}
     
     // Set mode COM3
-    PL_SetMode(COM3);
+    PL_SetMode(COM3); 
     
     // формируем пакет TYPE_0
     dataToTransfer[0] = 0xA2;
     dataToTransfer[1] = PL_CalCKT( dataToTransfer, 1,0 );
     
-    // Send data
-    PL_Transfer(dataToTransfer,2);
+    // Send data with mode COM3
+    PL_Transfer( dataToTransfer,2 );
+	if ( RESULT_OK == PL_Receive( PL_Tdmt_COM2 ));
+	{
+		result = RESULT_OK;
+	}
+	else
+	{
+		// Set mode COM2
+		PL_SetMode(COM2);
+		
+		// Send data with mode COM2
+		PL_Transfer( dataToTransfer,2 );
+		if ( RESULT_OK == PL_Receive( PL_Tdmt_COM1 ));
+		{
+			result = RESULT_OK;
+		}
+		else
+		{
+			// Set mode COM1
+			PL_SetMode(COM1);
+			
+			// Send data with mode COM1
+			PL_Transfer( dataToTransfer,2 );
+			if ( RESULT_OK == PL_Receive( PL_Tdwu ));
+			{
+				отправляем пакет выше
+				result = RESULT_OK;
+			}
+		}
+	}
     
 }
 // end of PL_WakeUP()
@@ -270,7 +378,7 @@ void PL_WakeUP( void )
 //--------------------------------------------------------------------------------------------------
 // @Parameters    mode - INACTIVE,DI,DO,COM1,COM2,COM3
 //**************************************************************************************************
-void PL_SetMode(PL_TARGET_MODE mode);
+static void PL_SetMode(PL_TARGET_MODE mode)
 {
     if (INACTIVE == mode)
     {
@@ -357,7 +465,7 @@ void PL_SetMode(PL_TARGET_MODE mode);
 //--------------------------------------------------------------------------------------------------
 // @Parameters    None.
 //**************************************************************************************************
-void PL_Transfer( uint8_t* data,uint16_t size )
+static void PL_Transfer( uint8_t* data,uint16_t size )
 {
     for (uint32_t i=0;i<size;i++)
     {
@@ -380,23 +488,73 @@ void PL_Transfer( uint8_t* data,uint16_t size )
 //--------------------------------------------------------------------------------------------------
 // @ReturnValue   None.
 //--------------------------------------------------------------------------------------------------
-// @Parameters    None.
+// @Parameters    timeout - in Tbit
+//				  size - size to receive	
 //**************************************************************************************************
-void PL_Receive( void )
+static RESULT_FUN PL_Receive( uint8_t* data, uint16_t size, uint16_t timeOut )
 {
-    for (uint32_t i=0;i<size;i++)
-    {
-        while(RESET == USART_GetFlagStatus(PL_USART_IO_LINK, USART_FLAG_TC));
-        USART_SendData(PL_USART_IO_LINK, *data);
-        data++;
-    }
+	RESULT_FUN result = RESULT_NOT_OK;
+	
+	PL_StartTimer( timeOut );
+	if (size < PL_SIZE_BUFF_DATA_REC)
+	{
+		while((size != 0) || (PL_timerState != TIMEOUT)) 
+		{
+			if (SET == USART_GetFlagStatus(PL_USART_IO_LINK, USART_FLAG_RXNE))
+			{
+				*data = USART_ReceiveData(PL_USART_IO_LINK);
+				data++;
+				size--;
+			}
+			
+		}
+	}
+	else
+	{
+		result = RESULT_NOT_OK;
+	}
+	
+	if (size == 0)
+	{
+		result = RESULT_OK;
+	}
+	else
+	{
+		result = RESULT_NOT_OK;
+	}
+	
+	return result;
 }
 // end of PL_Receive()
 
 
 
 //**************************************************************************************************
-// @Function      PL_Delay
+// @Function      PL_StartTimer
+//--------------------------------------------------------------------------------------------------
+// @Description   Timer for PL.
+//--------------------------------------------------------------------------------------------------
+// @Notes         None.
+//--------------------------------------------------------------------------------------------------
+// @ReturnValue   None.
+//--------------------------------------------------------------------------------------------------
+// @Parameters    time in us. 1..0xffff
+//**************************************************************************************************
+static void PL_StartTimer( uint16_t time )
+{
+	TIM_Cmd(PL_Timer, DISABLE);
+	TIM_ClearFlag(PL_Timer, TIM_FLAG_Update);
+	TIM_SetAutoreload(PL_TIMER, time);
+	//wait
+	TIM_Cmd(PL_Timer, ENABLE);
+	PL_timerState = RUN;
+}
+// end of PL_StartTimer()
+
+
+
+//**************************************************************************************************
+// @Function      PL_GetStatusTimer
 //--------------------------------------------------------------------------------------------------
 // @Description   Delay for PL. It bases on PL_TIMER
 //--------------------------------------------------------------------------------------------------
@@ -404,19 +562,15 @@ void PL_Receive( void )
 //--------------------------------------------------------------------------------------------------
 // @ReturnValue   None.
 //--------------------------------------------------------------------------------------------------
-// @Parameters    time in ticks of PL_Timer
+// @Parameters    None.
 //**************************************************************************************************
-void PL_Delay( uint16_t time )
+static void PL_GetStatusTimer( void )
 {
-	TIM_Cmd(PL_Timer, DISABLE);
-	TIM_ClearFlag(PL_Timer, TIM_FLAG_Update);
-	TIM_SetAutoreload(PL_TIMER, time);
-	//wait
-	TIM_Cmd(PL_Timer, ENABLE);
-	while(RESET != TIM_GetFlagStatus(PL_Timer, TIM_FLAG_Update));
+	if(SET == TIM_GetFlagStatus(PL_Timer, TIM_FLAG_Update));
+	PL_timerState = TIMEOUT;
 	TIM_Cmd(PL_Timer, DISABLE);
 }
-// end of PL_Delay()
+// end of PL_GetStatusTimer()
 
 
 
@@ -433,7 +587,7 @@ void PL_Delay( uint16_t time )
 //                size - size of data 
 //                typeMseq - type of M-sequence   
 //**************************************************************************************************
-void uint8_t PL_CalCKT( uint8_t* data, const uint16_t size, uint8_t typeMseq )
+static uint8_t PL_CalCKT( uint8_t* data, const uint16_t size, uint8_t typeMseq )
 {
     uint8_t checkSum = 0x52;
     uint8_t checkSum6Bits = 0;
