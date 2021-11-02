@@ -88,16 +88,31 @@
 #define PL_TWU				   (80)
 #define PL_TREN				   (500)
 
+// Tbit - измеряется в тиках TIM5, source 36MHz
+#define PL_Tbit_COM3           (156)
+#define PL_Tbit_COM2           (937)
+#define PL_Tbit_COM1           (7500)
+
+#define PL_Tdmt_K              (30)
+
+#define PL_Tdmt_COM3           (PL_Tdmt_K*PL_Tbit_COM3)
+#define PL_Tdmt_COM2           (PL_Tdmt_K*PL_Tbit_COM2)
+#define PL_Tdmt_COM1           (PL_Tdmt_K*PL_Tbit_COM1)
+
 // Number hardware timer
 #define PL_TIMER		      (TIM5)
 #define PL_TIMER_PERIOD		  ()
 #define PL_TIMER_PRESCALER    ()
+ 
+
+#define PL_SIZE_BUFF_DATA_TO_TR     (64)
               
 //**************************************************************************************************
 // Definitions of static global (private) variables
 //**************************************************************************************************
 
-PL_TARGET_MODE PL_TargetMode; 
+PL_TARGET_MODE PL_TargetMode;
+uint8_t dataToTransfer[PL_SIZE_BUFF_DATA_TO_TR]; 
 
 
 //**************************************************************************************************
@@ -224,6 +239,20 @@ void PL_WakeUP( void )
 		PL_Delay(PL_TWU);
 		GPIO_WriteBit(PL_PORT_IO_LINK, PL_PIN_TRANSMMITER, Bit_RESET);
 	}
+    
+    // Wait Tdmt_COM3
+    PL_Delay( PL_Tdmt_COM3 );
+    
+    // Set mode COM3
+    PL_SetMode(COM3);
+    
+    // формируем пакет TYPE_0
+    dataToTransfer[0] = 0xA2;
+    dataToTransfer[1] = PL_CalCKT( dataToTransfer, 1,0 );
+    
+    // Send data
+    PL_Transfer(dataToTransfer,2);
+    
 }
 // end of PL_WakeUP()
 
@@ -328,11 +357,41 @@ void PL_SetMode(PL_TARGET_MODE mode);
 //--------------------------------------------------------------------------------------------------
 // @Parameters    None.
 //**************************************************************************************************
-void PL_Transfer( void )
+void PL_Transfer( uint8_t* data,uint16_t size )
 {
-
+    for (uint32_t i=0;i<size;i++)
+    {
+        while(RESET == USART_GetFlagStatus(PL_USART_IO_LINK, USART_FLAG_TC));
+        USART_SendData(PL_USART_IO_LINK, *data);
+        data++;
+    }
 }
 // end of PL_Transfer()
+
+
+
+//**************************************************************************************************
+// @Function      PL_Receive
+//--------------------------------------------------------------------------------------------------
+// @Description   The PL-Transfer service is used to exchange the SDCI data between Data Link Layer 
+//				  and  Physical Layer
+//--------------------------------------------------------------------------------------------------
+// @Notes         None.
+//--------------------------------------------------------------------------------------------------
+// @ReturnValue   None.
+//--------------------------------------------------------------------------------------------------
+// @Parameters    None.
+//**************************************************************************************************
+void PL_Receive( void )
+{
+    for (uint32_t i=0;i<size;i++)
+    {
+        while(RESET == USART_GetFlagStatus(PL_USART_IO_LINK, USART_FLAG_TC));
+        USART_SendData(PL_USART_IO_LINK, *data);
+        data++;
+    }
+}
+// end of PL_Receive()
 
 
 
@@ -345,13 +404,13 @@ void PL_Transfer( void )
 //--------------------------------------------------------------------------------------------------
 // @ReturnValue   None.
 //--------------------------------------------------------------------------------------------------
-// @Parameters    time in us
+// @Parameters    time in ticks of PL_Timer
 //**************************************************************************************************
 void PL_Delay( uint16_t time )
 {
 	TIM_Cmd(PL_Timer, DISABLE);
 	TIM_ClearFlag(PL_Timer, TIM_FLAG_Update);
-	TIM_SetAutoreload(PL_TIMER, time*PL_K);
+	TIM_SetAutoreload(PL_TIMER, time);
 	//wait
 	TIM_Cmd(PL_Timer, ENABLE);
 	while(RESET != TIM_GetFlagStatus(PL_Timer, TIM_FLAG_Update));
@@ -359,6 +418,46 @@ void PL_Delay( uint16_t time )
 }
 // end of PL_Delay()
 
+
+
+//**************************************************************************************************
+// @Function      PL_CalCKT
+//--------------------------------------------------------------------------------------------------
+// @Description   Function calculates check Sum adn then compresses to 6 bit
+//--------------------------------------------------------------------------------------------------
+// @Notes         None.
+//--------------------------------------------------------------------------------------------------
+// @ReturnValue   None.
+//--------------------------------------------------------------------------------------------------
+// @Parameters    data - pointer to data
+//                size - size of data 
+//                typeMseq - type of M-sequence   
+//**************************************************************************************************
+void uint8_t PL_CalCKT( uint8_t* data, const uint16_t size, uint8_t typeMseq )
+{
+    uint8_t checkSum = 0x52;
+    uint8_t checkSum6Bits = 0;
+    uint8_t CKT = 0;
+    
+    for (uint32_t i=0;i<size;i++)
+    {
+        checkSum = checkSum ^ *data;
+        data++;    
+    }
+    
+    // comprassing to 6 bits
+    uint8_t tm = checkSum >> 1;
+    tm = tm ^ checkSum;
+    checkSum6Bits |= tm & 0x1;
+    checkSum6Bits |= (tm >> 1) & 0x2;
+    checkSum6Bits |= (tm >> 2) & 0x4;
+    checkSum6Bits |= (tm >> 3) & 0x8;
+    checkSum6Bits |= ((checkSum ^ (checkSum>>2) ^ (checkSum<<2) ^ (checkSum<<4))&0x30;
+    
+    CKT = checkSum6Bits | ((typeMseq<<6)&0xc0);
+    return CKT;
+}
+// end of PL_CalCKT()
 
 
 
