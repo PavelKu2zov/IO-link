@@ -1,20 +1,20 @@
 //**************************************************************************************************
-// @Module        PL
-// @Filename      PL_drv.h
+// @Module        MAIN
+// @Filename      main.h
 //--------------------------------------------------------------------------------------------------
-// @Description   Interface of the PL module.
-//
+// @Description   Interface of the MODULE module.
+//                [Description...]
 //--------------------------------------------------------------------------------------------------
 // @Version       1.0.0
 //--------------------------------------------------------------------------------------------------
-// @Date          30.08.2021
+// @Date          XX.XX.XXXX
 //--------------------------------------------------------------------------------------------------
 // @History       Version  Author      Comment
-// XX.XX.XXXX     1.0.0    KPS         First release.
+// XX.XX.XXXX     1.0.0    XXX         First release.
 //**************************************************************************************************
 
-#ifndef PL_DRV_H
-#define PL_DRV_H
+#ifndef MAIN_H
+#define MAIN_H
 
 
 
@@ -22,85 +22,56 @@
 // Project Includes
 //**************************************************************************************************
 
-// None.
+#include "stm32f10x.h"
+
 
 
 //**************************************************************************************************
 // Declarations of global (public) data types
 //**************************************************************************************************
 
-// Services of Physical layer 
-typedef enum 
-{
-    PL_SETMODE = 0,
-    PL_WAKEUP,
-	PL_TRANSFER
-}PL_SERVICE_enum;
-
-// Target mode
-typedef enum PL_TARGET_MODE_enum
-{
-	INACTIVE=0,
-	DI,
-	D,
-	COM1,
-	COM2,
-	COM3
-}PL_TARGET_MODE;
+// [Description...]
+// None.
 
 
-// type message for queue
-typedef enum PL_TYPE_MES_QUEUE_enum
-{
-    PL_SET_MODE=0,
-    PL_WAKE_UP,
-    PL_TRANSFER_COM1,
-    PL_TRANSFER_COM2,
-    PL_TRANSFER_COM3
-}PL_TYPE_MES_QUEUE;
-
-// structure mes queue
-typedef struct PL_MES_QUEUE_struct
-{
-    PL_TYPE_MES_QUEUE typeMes;
-    uint32_t size;
-    uint8_t *p;    
-}PL_MES_QUEUE;
 
 //**************************************************************************************************
 // Definitions of global (public) constants
 //**************************************************************************************************
 
-#define PL_SIZE_DATA		(uint16_t)(255) 		
+// [Description...]
+#define MODULE_CONST_ZERO   (0x00U)
+
+// [Description...]
+#define MODULE_CONST_ONE    (1U)
+
 
 
 //**************************************************************************************************
 // Declarations of global (public) variables
 //**************************************************************************************************
 
-uint8_t PL_aData[PL_SIZE_DATA];
+// [Description...]
+extern DATA_TYPE MODULE_variableZero;
+
+// [Description...]
+extern DATA_TYPE MODULE_variableOne;
+
 
 
 //**************************************************************************************************
 // Declarations of global (public) functions
 //**************************************************************************************************
 
-// Init Physical layer
-void PL_Init(void);
+// [Description...]
+extern DATA_TYPE MODULE_FunctionZero(DATA_TYPE parameterZero);
 
-// Task of Physikal layer
-void PL_Task(void *pvParameters)
-
-// Wake up service
-void PL_WakeUP(void);
-
-// Set target mode service
-void PL_SetMode(PL_TARGET_MODE mode);
-
-// Transfer data service
-void PL_Transfer( void );
+// [Description...]
+extern DATA_TYPE MODULE_FunctionOne(DATA_TYPE parameterZero,
+                                    DATA_TYPE parameterOne);
 
 
-#ifndef PL_DRV_H
+
+#endif // #ifndef MAIN_H
 
 //****************************************** end of file *******************************************
