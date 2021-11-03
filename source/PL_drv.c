@@ -435,7 +435,7 @@ static void PL_SetMode(PL_TARGET_MODE mode)
 		
 		USART_DeInit(PL_USART_IO_LINK);
 		USART_InitTypeDef USART_InitStruct;
-		USART_InitStruct.USART_WordLength = USART_WordLength_8b;
+		USART_InitStruct.USART_WordLength = USART_WordLength_9b;
 		USART_InitStruct.USART_StopBits = USART_StopBits_1;
 		USART_InitStruct.USART_Parity = USART_Parity_Even;
 		USART_InitStruct.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;
