@@ -107,8 +107,8 @@
 /* #define SYSCLK_FREQ_HSE    HSE_VALUE */
  #define SYSCLK_FREQ_24MHz  24000000
 #else
-/* #define SYSCLK_FREQ_HSE    HSE_VALUE */
-/* #define SYSCLK_FREQ_24MHz  24000000 */ 
+ //#define SYSCLK_FREQ_HSE    HSE_VALUE 
+// #define SYSCLK_FREQ_24MHz  24000000 
 /* #define SYSCLK_FREQ_36MHz  36000000 */
 /* #define SYSCLK_FREQ_48MHz  48000000 */
 /* #define SYSCLK_FREQ_56MHz  56000000 */
@@ -1076,6 +1076,7 @@ static void SetSysClockTo72(void)
   else
   { /* If HSE fails to start-up, the application will have wrong clock 
          configuration. User can add here some code to deal with this error */
+		 ;
   }
 }
 #endif

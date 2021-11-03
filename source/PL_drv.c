@@ -112,7 +112,7 @@ typedef enum PL_TARGET_MODE_enum
 #define PL_TWU				   (80)
 
 // Receive enable delay max 500 us
-#define PL_TREN				   (500)
+#define PL_TREN				   (340)
 
 // Tbit - time of one bit in us 
 #define PL_Tbit_COM3           (4)//4,34 us
@@ -143,7 +143,7 @@ typedef enum PL_TARGET_MODE_enum
 // Number hardware timer tick = 1 us
 #define PL_TIMER		      (TIM2)
 #define PL_TIMER_PERIOD		  (0xffff)
-#define PL_TIMER_PRESCALER    (72)
+#define PL_TIMER_PRESCALER    (71)
 
 #define PL_SIZE_BUFF_DATA_TO_TR     (64)
 #define PL_SIZE_BUFF_DATA_REC       (64)
@@ -164,10 +164,10 @@ PL_TIMER_STATE PL_timerState = STOP;
 //**************************************************************************************************
 
 // Init PL
-static void PL_Init(void);
+ void PL_Init(void);
 
 // Send Wake Up sequences
-static RESULT_FUN PL_WakeUP(void);
+ RESULT_FUN PL_WakeUP(void);
 
 // Set mode PL
 static void PL_SetMode(PL_TARGET_MODE mode);
@@ -267,7 +267,7 @@ void PL_Task(void *pvParameters)
 //--------------------------------------------------------------------------------------------------
 // @Parameters    None.
 //**************************************************************************************************
-static void PL_Init(void)
+ void PL_Init(void)
 {
     TIM_DeInit(PL_TIMER);
 	TIM_TimeBaseInitTypeDef TIM_TimeBaseInitStruct;
@@ -277,7 +277,9 @@ static void PL_Init(void)
 	TIM_TimeBaseInitStruct.TIM_CounterMode = TIM_CounterMode_Up;
 	TIM_TimeBaseInitStruct.TIM_RepetitionCounter = 0x0000;
 	TIM_TimeBaseInit(PL_TIMER, &TIM_TimeBaseInitStruct);
-	//TIM_Cmd(PL_TIMER, ENABLE);
+    TIM_ARRPreloadConfig(PL_TIMER,DISABLE);
+  
+   // TIM_Cmd(PL_TIMER, ENABLE);
 }// end of PL_Init()
 
 
@@ -294,7 +296,7 @@ static void PL_Init(void)
 //--------------------------------------------------------------------------------------------------
 // @Parameters    None.
 //**************************************************************************************************
-static RESULT_FUN PL_WakeUP( void )
+ RESULT_FUN PL_WakeUP( void )
 {
 	RESULT_FUN result = RESULT_NOT_OK;
 	// Set mode SIO
@@ -304,6 +306,11 @@ static RESULT_FUN PL_WakeUP( void )
 	if (Bit_SET == GPIO_ReadOutputDataBit(PL_PORT_IO_LINK, PL_PIN_TRANSMMITER))
 	{
         GPIO_ResetBits(PL_PORT_IO_LINK, PL_PIN_TRANSMMITER);
+        PL_StartTimer( PL_TWU );
+		while( RUN == PL_timerState )
+		{
+			PL_GetStatusTimer();
+		}
 	}
 	else if (Bit_RESET == GPIO_ReadOutputDataBit(PL_PORT_IO_LINK, PL_PIN_TRANSMMITER))
 	{
@@ -314,13 +321,12 @@ static RESULT_FUN PL_WakeUP( void )
 			PL_GetStatusTimer();
 		}
 		GPIO_ResetBits(PL_PORT_IO_LINK, PL_PIN_TRANSMMITER);
-		
-		PL_StartTimer( PL_TREN );
-		while( RUN == PL_timerState )
-		{
-			PL_GetStatusTimer();
-		}
 	}
+    PL_StartTimer( PL_TREN );
+    while( RUN == PL_timerState )
+    {
+        PL_GetStatusTimer();
+    }
     
 	// Send test messages
 	
@@ -393,7 +399,7 @@ static void PL_SetMode(PL_TARGET_MODE mode)
         GPIO_InitTypeDef GPIO_InitStruct;
         GPIO_InitStruct.GPIO_Pin = PL_PIN_TRANSMMITER | PL_PIN_RECEIVE;
         GPIO_InitStruct.GPIO_Mode = GPIO_Mode_IN_FLOATING;
-        GPIO_InitStruct.GPIO_Speed = GPIO_Speed_2MHz;   
+        GPIO_InitStruct.GPIO_Speed = GPIO_Speed_50MHz;   
         GPIO_Init(PL_PORT_IO_LINK, &GPIO_InitStruct);
     }
 	else if (DI == mode)
@@ -401,7 +407,7 @@ static void PL_SetMode(PL_TARGET_MODE mode)
 		GPIO_InitTypeDef GPIO_InitStruct;
         GPIO_InitStruct.GPIO_Pin = PL_PIN_RECEIVE;
         GPIO_InitStruct.GPIO_Mode = GPIO_Mode_IPD;
-        GPIO_InitStruct.GPIO_Speed = GPIO_Speed_2MHz;   
+        GPIO_InitStruct.GPIO_Speed = GPIO_Speed_50MHz;   
         GPIO_Init(PL_PORT_IO_LINK, &GPIO_InitStruct);
 		
         GPIO_InitStruct.GPIO_Pin = PL_PIN_TRANSMMITER;
@@ -413,7 +419,7 @@ static void PL_SetMode(PL_TARGET_MODE mode)
 		GPIO_InitTypeDef GPIO_InitStruct;
         GPIO_InitStruct.GPIO_Pin = PL_PIN_RECEIVE;
         GPIO_InitStruct.GPIO_Mode = GPIO_Mode_IPD;
-        GPIO_InitStruct.GPIO_Speed = GPIO_Speed_2MHz;   
+        GPIO_InitStruct.GPIO_Speed = GPIO_Speed_50MHz;   
         GPIO_Init(PL_PORT_IO_LINK, &GPIO_InitStruct);
 				
         GPIO_InitStruct.GPIO_Pin = PL_PIN_TRANSMMITER;
@@ -425,7 +431,7 @@ static void PL_SetMode(PL_TARGET_MODE mode)
 		GPIO_InitTypeDef GPIO_InitStruct;
         GPIO_InitStruct.GPIO_Pin = PL_PIN_RECEIVE;
         GPIO_InitStruct.GPIO_Mode = GPIO_Mode_IN_FLOATING;
-        GPIO_InitStruct.GPIO_Speed = GPIO_Speed_2MHz;   
+        GPIO_InitStruct.GPIO_Speed = GPIO_Speed_50MHz;   
         GPIO_Init(PL_PORT_IO_LINK, &GPIO_InitStruct);
 		
 		GPIO_InitStruct.GPIO_Pin = PL_PIN_TRANSMMITER;
@@ -552,11 +558,12 @@ static RESULT_FUN PL_Receive( uint8_t* data, uint16_t size, uint16_t timeOut )
 static void PL_StartTimer( uint16_t time )
 {
 	TIM_Cmd(PL_TIMER, DISABLE);
-	TIM_ClearFlag(PL_TIMER, TIM_FLAG_Update);
-	TIM_SetAutoreload(PL_TIMER, time);
-	//wait
-	TIM_Cmd(PL_TIMER, ENABLE);
-	PL_timerState = RUN;
+    TIM_ClearFlag(PL_TIMER, TIM_FLAG_CC1);
+    TIM_SetCompare1(PL_TIMER, time);
+    TIM_SetCounter(PL_TIMER, 0);
+    TIM_Cmd(PL_TIMER, ENABLE);
+    
+    PL_timerState = RUN;
 }
 // end of PL_StartTimer()
 
@@ -575,7 +582,7 @@ static void PL_StartTimer( uint16_t time )
 //**************************************************************************************************
 static void PL_GetStatusTimer( void )
 {
-	if(SET == TIM_GetFlagStatus(PL_TIMER, TIM_FLAG_Update))
+	if(SET == TIM_GetFlagStatus(PL_TIMER, TIM_FLAG_CC1))
     {
         PL_timerState = TIMEOUT;
         TIM_Cmd(PL_TIMER, DISABLE);

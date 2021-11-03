@@ -123,7 +123,8 @@ int main(void)
 	
 	// Start Scheduler
 	vTaskStartScheduler();
-	
+
+    while(1);
 }// end of main()
 
 
