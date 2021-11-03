@@ -35,9 +35,10 @@
 //**************************************************************************************************
 // Project Includes
 //**************************************************************************************************
-#include "main.h"
+//#include "main.h"
 
 /* Scheduler includes. */
+#include "stm32f10x.h"
 #include "FreeRTOS.h"
 #include "task.h"
 #include "queue.h"
@@ -49,10 +50,10 @@
 //**************************************************************************************************
 
 // Semaphore fo DL mode 
-xSemaphoreHandle xDL_SetMode;
+//xSemaphoreHandle xDL_SetMode;
 
 // PL Queue
-xQueueHandle xPL_Queue;
+//xQueueHandle xPL_Queue;
 
 
 
@@ -65,6 +66,13 @@ xQueueHandle xPL_Queue;
 //**************************************************************************************************
 // Definitions of local (private) constants
 //**************************************************************************************************
+
+// Stack for PL_task
+#define DEVICE_SIZE_STACK_PL_TASK			(1000)
+
+// Priority of PL_task
+#define DEVICE_PRIORITY_PL_TASK				(2)
+
 
 #define LEN_PL_QUEUE            (10)
 
@@ -105,12 +113,17 @@ int main(void)
 {
 	Init();
 
-    /
-	
-    vSemaphoreCreateBinary( xDL_SetMode );
+    //vSemaphoreCreateBinary( xDL_SetMode );
     
     // Create Queue for PL 
-    xPL_Queue = xQueueCreate( LEN_PL_QUEUE,sizeof (PL_MES_QUEUE));
+    //xPL_Queue = xQueueCreate( LEN_PL_QUEUE,sizeof (PL_MES_QUEUE));
+	
+	// Create 
+	xTaskCreate( PL_Task,"PL_Task",DEVICE_SIZE_STACK_PL_TASK,NULL,DEVICE_PRIORITY_PL_TASK,NULL);
+	
+	// Start Scheduler
+	vTaskStartScheduler();
+	
 }// end of main()
 
 

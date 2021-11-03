@@ -22,7 +22,7 @@
 // Project Includes
 //**************************************************************************************************
 
-// None.
+#include "stm32f10x.h"
 
 
 //**************************************************************************************************
@@ -76,9 +76,9 @@ typedef struct PL_MES_QUEUE_struct
 
 
 // Task of Physikal layer
-void PL_Task(void *pvParameters)
+void PL_Task(void *pvParameters);
 
 
-#ifndef PL_DRV_H
+#endif // PL_DRV_H
 
 //****************************************** end of file *******************************************

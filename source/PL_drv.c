@@ -40,7 +40,7 @@
 #include "PL_drv.h"
 #include "FreeRTOS.h"
 #include "task.h"
-#include "main.h"
+//#include "main.h"
 
 
 //**************************************************************************************************
@@ -92,7 +92,7 @@ typedef enum PL_TARGET_MODE_enum
 //**************************************************************************************************
 
 // gpio for Io-Link
-#defein PL_PORT_IO_LINK        GPIOA 
+#define PL_PORT_IO_LINK        GPIOA 
 #define PL_PIN_TRANSMMITER     GPIO_Pin_2 
 #define PL_PIN_RECEIVE         GPIO_Pin_3
 
@@ -141,9 +141,9 @@ typedef enum PL_TARGET_MODE_enum
 #define PL_Tds				   ()	
 
 // Number hardware timer tick = 1 us
-#define PL_TIMER		      (TIM5)
+#define PL_TIMER		      (TIM2)
 #define PL_TIMER_PERIOD		  (0xffff)
-#define PL_TIMER_PRESCALER    (36)
+#define PL_TIMER_PRESCALER    (72)
 
 #define PL_SIZE_BUFF_DATA_TO_TR     (64)
 #define PL_SIZE_BUFF_DATA_REC       (64)
@@ -188,8 +188,6 @@ static void PL_GetStatusTimer( void );
 static uint8_t PL_CalCKT( uint8_t* data, const uint16_t size, uint8_t typeMseq );
 
 
-
-
 //**************************************************************************************************
 //==================================================================================================
 // Definitions of global (public) functions
@@ -212,27 +210,38 @@ static uint8_t PL_CalCKT( uint8_t* data, const uint16_t size, uint8_t typeMseq )
 void PL_Task(void *pvParameters)
 {
     portBASE_TYPE xStatus;
-    PL_MES_QUEUE PL_receiveMes;
+    //PL_MES_QUEUE PL_receiveMes;
+    PL_Init();
 	for(;;)
 	{
 		//Wait message
-		xStatus = xQueueReceive( xPL_Queue, &PL_receiveMes, portMAX_DELAY );
+		// xStatus = xQueueReceive( xPL_Queue, &PL_receiveMes, portMAX_DELAY );
 		
-        if ( pdPASS == xStatus )
-        {
-            if (PL_WAKE_UP == PL_receiveMes)
-            {
-				for (int32_t i=0;i<PL_Nwu;i++)
-				{
-					if (RESULT_OK == PL_WakeUP())
-					{
-						break;
-					}
-				}
+        // if ( pdPASS == xStatus )
+        // {
+            // if (PL_WAKE_UP == PL_receiveMes)
+            // {
+				// for (int32_t i=0;i<PL_Nwu;i++)
+				// {
+					// if (RESULT_OK == PL_WakeUP())
+					// {
+						// break;
+					// }
+				// }
 				
-            }
+            // }
  
-        }
+        // }
+		
+		for (int32_t i=0;i<PL_Nwu;i++)
+		{
+			if (RESULT_OK == PL_WakeUP())
+			{
+				break;
+			}
+		}
+		
+		vTaskDelay( 1 / portTICK_RATE_MS );
 		
 	}
 }// end of PL_Task()
@@ -260,15 +269,15 @@ void PL_Task(void *pvParameters)
 //**************************************************************************************************
 static void PL_Init(void)
 {
-    TIM_DeInit(PL_Timer);
+    TIM_DeInit(PL_TIMER);
 	TIM_TimeBaseInitTypeDef TIM_TimeBaseInitStruct;
     TIM_TimeBaseInitStruct.TIM_Period = PL_TIMER_PERIOD;
 	TIM_TimeBaseInitStruct.TIM_Prescaler = PL_TIMER_PRESCALER;
 	TIM_TimeBaseInitStruct.TIM_ClockDivision = TIM_CKD_DIV1;
 	TIM_TimeBaseInitStruct.TIM_CounterMode = TIM_CounterMode_Up;
 	TIM_TimeBaseInitStruct.TIM_RepetitionCounter = 0x0000;
-	TIM_TimeBaseInit(PL_Timer, &TIM_TimeBaseInitStruct);
-	
+	TIM_TimeBaseInit(PL_TIMER, &TIM_TimeBaseInitStruct);
+	//TIM_Cmd(PL_TIMER, ENABLE);
 }// end of PL_Init()
 
 
@@ -294,17 +303,17 @@ static RESULT_FUN PL_WakeUP( void )
 	// Make impuls WURQ
 	if (Bit_SET == GPIO_ReadOutputDataBit(PL_PORT_IO_LINK, PL_PIN_TRANSMMITER))
 	{
-		GPIO_WriteBit(PL_PORT_IO_LINK, PL_PIN_TRANSMMITER, Bit_RESET);
+        GPIO_ResetBits(PL_PORT_IO_LINK, PL_PIN_TRANSMMITER);
 	}
 	else if (Bit_RESET == GPIO_ReadOutputDataBit(PL_PORT_IO_LINK, PL_PIN_TRANSMMITER))
 	{
-		GPIO_WriteBit(PL_PORT_IO_LINK, PL_PIN_TRANSMMITER, Bit_RES);
+		GPIO_SetBits(PL_PORT_IO_LINK, PL_PIN_TRANSMMITER);
 		PL_StartTimer( PL_TWU );
 		while( RUN == PL_timerState )
 		{
 			PL_GetStatusTimer();
 		}
-		GPIO_WriteBit(PL_PORT_IO_LINK, PL_PIN_TRANSMMITER, Bit_RESET);
+		GPIO_ResetBits(PL_PORT_IO_LINK, PL_PIN_TRANSMMITER);
 		
 		PL_StartTimer( PL_TREN );
 		while( RUN == PL_timerState )
@@ -331,7 +340,7 @@ static RESULT_FUN PL_WakeUP( void )
     
     // Send data with mode COM3
     PL_Transfer( dataToTransfer,2 );
-	if ( RESULT_OK == PL_Receive( PL_Tdmt_COM2 ));
+	if ( RESULT_OK == PL_Receive( dataReceive,2,PL_Tdmt_COM2 ))
 	{
 		result = RESULT_OK;
 	}
@@ -342,7 +351,7 @@ static RESULT_FUN PL_WakeUP( void )
 		
 		// Send data with mode COM2
 		PL_Transfer( dataToTransfer,2 );
-		if ( RESULT_OK == PL_Receive( PL_Tdmt_COM1 ));
+		if ( RESULT_OK == PL_Receive( dataReceive,2,PL_Tdmt_COM1 ))
 		{
 			result = RESULT_OK;
 		}
@@ -353,9 +362,8 @@ static RESULT_FUN PL_WakeUP( void )
 			
 			// Send data with mode COM1
 			PL_Transfer( dataToTransfer,2 );
-			if ( RESULT_OK == PL_Receive( PL_Tdwu ));
+			if ( RESULT_OK == PL_Receive( dataReceive,2,PL_Tdwu ))
 			{
-				отправляем пакет выше
 				result = RESULT_OK;
 			}
 		}
@@ -425,7 +433,7 @@ static void PL_SetMode(PL_TARGET_MODE mode)
 		GPIO_Init(PL_PORT_IO_LINK, &GPIO_InitStruct);
 		
 		
-		USART_DeInit(USART_IO_LINK);
+		USART_DeInit(PL_USART_IO_LINK);
 		USART_InitTypeDef USART_InitStruct;
 		USART_InitStruct.USART_WordLength = USART_WordLength_8b;
 		USART_InitStruct.USART_StopBits = USART_StopBits_1;
@@ -446,7 +454,8 @@ static void PL_SetMode(PL_TARGET_MODE mode)
 			USART_InitStruct.USART_BaudRate = PL_BAUDRATE_COM3;
 		}
 		
-		USART_Init(USART_IO_LINK, &USART_InitStruct);
+		USART_Init(PL_USART_IO_LINK, &USART_InitStruct);
+		USART_Cmd(PL_USART_IO_LINK, ENABLE);
 	}
 	PL_TargetMode = mode;
 }
@@ -498,7 +507,7 @@ static RESULT_FUN PL_Receive( uint8_t* data, uint16_t size, uint16_t timeOut )
 	PL_StartTimer( timeOut );
 	if (size < PL_SIZE_BUFF_DATA_REC)
 	{
-		while((size != 0) || (PL_timerState != TIMEOUT)) 
+		while((size != 0) && (PL_timerState != TIMEOUT)) 
 		{
 			if (SET == USART_GetFlagStatus(PL_USART_IO_LINK, USART_FLAG_RXNE))
 			{
@@ -506,7 +515,7 @@ static RESULT_FUN PL_Receive( uint8_t* data, uint16_t size, uint16_t timeOut )
 				data++;
 				size--;
 			}
-			
+            PL_GetStatusTimer();
 		}
 	}
 	else
@@ -542,11 +551,11 @@ static RESULT_FUN PL_Receive( uint8_t* data, uint16_t size, uint16_t timeOut )
 //**************************************************************************************************
 static void PL_StartTimer( uint16_t time )
 {
-	TIM_Cmd(PL_Timer, DISABLE);
-	TIM_ClearFlag(PL_Timer, TIM_FLAG_Update);
+	TIM_Cmd(PL_TIMER, DISABLE);
+	TIM_ClearFlag(PL_TIMER, TIM_FLAG_Update);
 	TIM_SetAutoreload(PL_TIMER, time);
 	//wait
-	TIM_Cmd(PL_Timer, ENABLE);
+	TIM_Cmd(PL_TIMER, ENABLE);
 	PL_timerState = RUN;
 }
 // end of PL_StartTimer()
@@ -566,9 +575,11 @@ static void PL_StartTimer( uint16_t time )
 //**************************************************************************************************
 static void PL_GetStatusTimer( void )
 {
-	if(SET == TIM_GetFlagStatus(PL_Timer, TIM_FLAG_Update));
-	PL_timerState = TIMEOUT;
-	TIM_Cmd(PL_Timer, DISABLE);
+	if(SET == TIM_GetFlagStatus(PL_TIMER, TIM_FLAG_Update))
+    {
+        PL_timerState = TIMEOUT;
+        TIM_Cmd(PL_TIMER, DISABLE);
+    }
 }
 // end of PL_GetStatusTimer()
 
@@ -606,7 +617,7 @@ static uint8_t PL_CalCKT( uint8_t* data, const uint16_t size, uint8_t typeMseq )
     checkSum6Bits |= (tm >> 1) & 0x2;
     checkSum6Bits |= (tm >> 2) & 0x4;
     checkSum6Bits |= (tm >> 3) & 0x8;
-    checkSum6Bits |= ((checkSum ^ (checkSum>>2) ^ (checkSum<<2) ^ (checkSum<<4))&0x30;
+    checkSum6Bits |= (checkSum ^ (checkSum>>2) ^ (checkSum<<2) ^ (checkSum<<4))&0x30;
     
     CKT = checkSum6Bits | ((typeMseq<<6)&0xc0);
     return CKT;
