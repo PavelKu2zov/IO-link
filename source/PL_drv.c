@@ -97,6 +97,8 @@ typedef enum PL_TARGET_MODE_enum
 #define PL_PIN_RECEIVE         GPIO_Pin_3
 
 #define PL_USART_IO_LINK       USART2
+#define CR1_UE_Set             ((uint16_t)0x2000)  /*!< USART Enable Mask */
+#define CR1_UE_Reset              ((uint16_t)0xDFFF)  /*!< USART Disable Mask */
 
 // Baudrate Io-Link interface
 // COM1 4800    bit/s
@@ -106,13 +108,17 @@ typedef enum PL_TARGET_MODE_enum
 #define PL_BAUDRATE_COM2       (38400)              
 #define PL_BAUDRATE_COM3       (230400)
 
+#define PL_BAUDRATE_COM1_BRR   (0x1D4C) 
+#define PL_BAUDRATE_COM2_BRR   (0x3A9) 
+#define PL_BAUDRATE_COM3_BRR   (0x9C) 
+
 // Times
 
 // Duration of Master's wake-up current pulse 75..85 us
 #define PL_TWU				   (80)
 
 // Receive enable delay max 500 us
-#define PL_TREN				   (340)
+#define PL_TREN				   (500)
 
 // Tbit - time of one bit in us 
 #define PL_Tbit_COM3           (4)//4,34 us
@@ -126,10 +132,10 @@ typedef enum PL_TARGET_MODE_enum
 #define PL_Tdmt_COM3           (PL_Tdmt_K*PL_Tbit_COM3)//132 us
 
 // min,max 703,08..963,48 us
-#define PL_Tdmt_COM2           (PL_Tdmt_K*PL_Tbit_COM2)//858 us
+#define PL_Tdmt_COM2           (PL_Tdmt_K*PL_Tbit_COM2)//858 us - 290 us
 
 // min,max 5624,91..7708,21 us
-#define PL_Tdmt_COM1           (PL_Tdmt_K*PL_Tbit_COM1)//6864 us
+#define PL_Tdmt_COM1           (PL_Tdmt_K*PL_Tbit_COM1)//6864 us - 2000 us
 
 //Wake-up retry delay 30..50 ms
 #define PL_Tdwu				   (40000)
@@ -170,22 +176,22 @@ PL_TIMER_STATE PL_timerState = STOP;
  RESULT_FUN PL_WakeUP(void);
 
 // Set mode PL
-static void PL_SetMode(PL_TARGET_MODE mode);
+ void PL_SetMode(PL_TARGET_MODE mode);
 
 // Transfer message 
-static void PL_Transfer( uint8_t* data,uint16_t size );
+ void PL_Transfer( uint8_t* data,uint16_t size );
 
 // receive message
-static RESULT_FUN PL_Receive( uint8_t* data, uint16_t size, uint16_t timeOut );
+ RESULT_FUN PL_Receive( uint8_t* data, uint16_t size, uint16_t timeOut );
 
 // start timer
-static void PL_StartTimer( uint16_t time );
+ void PL_StartTimer( uint16_t time );
 
 // Get status timer
-static void PL_GetStatusTimer( void );
+ void PL_GetStatusTimer( void );
 
 // calculate CKT
-static uint8_t PL_CalCKT( uint8_t* data, const uint16_t size, uint8_t typeMseq );
+ uint8_t PL_CalCKT( uint8_t* data, const uint16_t size, uint8_t typeMseq );
 
 
 //**************************************************************************************************
@@ -278,8 +284,20 @@ void PL_Task(void *pvParameters)
 	TIM_TimeBaseInitStruct.TIM_RepetitionCounter = 0x0000;
 	TIM_TimeBaseInit(PL_TIMER, &TIM_TimeBaseInitStruct);
     TIM_ARRPreloadConfig(PL_TIMER,DISABLE);
-  
-   // TIM_Cmd(PL_TIMER, ENABLE);
+    
+    USART_DeInit(PL_USART_IO_LINK);
+    USART_InitTypeDef USART_InitStruct;
+    USART_InitStruct.USART_WordLength = USART_WordLength_9b;
+    USART_InitStruct.USART_StopBits = USART_StopBits_1;
+    USART_InitStruct.USART_Parity = USART_Parity_Even;
+    USART_InitStruct.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;
+    USART_InitStruct.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
+    USART_InitStruct.USART_BaudRate = PL_BAUDRATE_COM3;
+    USART_Init(PL_USART_IO_LINK, &USART_InitStruct);
+    
+  // Enable USART
+    USART_Cmd(PL_USART_IO_LINK, ENABLE);
+
 }// end of PL_Init()
 
 
@@ -346,15 +364,16 @@ void PL_Task(void *pvParameters)
     
     // Send data with mode COM3
     PL_Transfer( dataToTransfer,2 );
+    	
 	if ( RESULT_OK == PL_Receive( dataReceive,2,PL_Tdmt_COM2 ))
 	{
 		result = RESULT_OK;
 	}
 	else
 	{
-		// Set mode COM2
-		PL_SetMode(COM2);
 		
+        // Set mode COM2
+		PL_SetMode(COM2);
 		// Send data with mode COM2
 		PL_Transfer( dataToTransfer,2 );
 		if ( RESULT_OK == PL_Receive( dataReceive,2,PL_Tdmt_COM1 ))
@@ -392,9 +411,38 @@ void PL_Task(void *pvParameters)
 //--------------------------------------------------------------------------------------------------
 // @Parameters    mode - INACTIVE,DI,DO,COM1,COM2,COM3
 //**************************************************************************************************
-static void PL_SetMode(PL_TARGET_MODE mode)
+ void PL_SetMode(PL_TARGET_MODE mode)
 {
-    if (INACTIVE == mode)
+    if ((COM1 == mode) || (COM2 == mode) || (COM3 == mode))
+	{        
+        if ((PL_TargetMode != COM1) && (PL_TargetMode != COM2) && (PL_TargetMode != COM3))
+        {
+            GPIO_InitTypeDef GPIO_InitStruct;
+            GPIO_InitStruct.GPIO_Pin = PL_PIN_RECEIVE;
+            GPIO_InitStruct.GPIO_Mode = GPIO_Mode_IN_FLOATING;
+            GPIO_InitStruct.GPIO_Speed = GPIO_Speed_50MHz;   
+            GPIO_Init(PL_PORT_IO_LINK, &GPIO_InitStruct);
+            
+            GPIO_InitStruct.GPIO_Pin = PL_PIN_TRANSMMITER;
+            GPIO_InitStruct.GPIO_Mode = GPIO_Mode_AF_PP;
+            GPIO_Init(PL_PORT_IO_LINK, &GPIO_InitStruct);
+		}
+        
+		if (COM1 == mode)
+		{
+			PL_USART_IO_LINK->BRR = PL_BAUDRATE_COM1_BRR;
+		}
+		else if (COM2 == mode)
+		{
+			PL_USART_IO_LINK->BRR = PL_BAUDRATE_COM2_BRR;
+		}
+		else if (COM3 == mode)
+		{
+			PL_USART_IO_LINK->BRR = PL_BAUDRATE_COM3_BRR;
+		}
+
+    }
+    else if (INACTIVE == mode)
     {
         GPIO_InitTypeDef GPIO_InitStruct;
         GPIO_InitStruct.GPIO_Pin = PL_PIN_TRANSMMITER | PL_PIN_RECEIVE;
@@ -424,45 +472,10 @@ static void PL_SetMode(PL_TARGET_MODE mode)
 				
         GPIO_InitStruct.GPIO_Pin = PL_PIN_TRANSMMITER;
         GPIO_InitStruct.GPIO_Mode = GPIO_Mode_Out_PP; 
+        GPIO_InitStruct.GPIO_Speed = GPIO_Speed_50MHz;
         GPIO_Init(PL_PORT_IO_LINK, &GPIO_InitStruct);
 	}
-	else if ((COM1 == mode) || (COM2 == mode) || (COM3 == mode))
-	{
-		GPIO_InitTypeDef GPIO_InitStruct;
-        GPIO_InitStruct.GPIO_Pin = PL_PIN_RECEIVE;
-        GPIO_InitStruct.GPIO_Mode = GPIO_Mode_IN_FLOATING;
-        GPIO_InitStruct.GPIO_Speed = GPIO_Speed_50MHz;   
-        GPIO_Init(PL_PORT_IO_LINK, &GPIO_InitStruct);
-		
-		GPIO_InitStruct.GPIO_Pin = PL_PIN_TRANSMMITER;
-        GPIO_InitStruct.GPIO_Mode = GPIO_Mode_AF_PP;
-		GPIO_Init(PL_PORT_IO_LINK, &GPIO_InitStruct);
-		
-		
-		USART_DeInit(PL_USART_IO_LINK);
-		USART_InitTypeDef USART_InitStruct;
-		USART_InitStruct.USART_WordLength = USART_WordLength_9b;
-		USART_InitStruct.USART_StopBits = USART_StopBits_1;
-		USART_InitStruct.USART_Parity = USART_Parity_Even;
-		USART_InitStruct.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;
-		USART_InitStruct.USART_HardwareFlowControl = USART_HardwareFlowControl_None; 
-		
-		if (COM1 == mode)
-		{
-			USART_InitStruct.USART_BaudRate = PL_BAUDRATE_COM1;
-		}
-		else if (COM2 == mode)
-		{
-			USART_InitStruct.USART_BaudRate = PL_BAUDRATE_COM2;
-		}
-		else if (COM3 == mode)
-		{
-			USART_InitStruct.USART_BaudRate = PL_BAUDRATE_COM3;
-		}
-		
-		USART_Init(PL_USART_IO_LINK, &USART_InitStruct);
-		USART_Cmd(PL_USART_IO_LINK, ENABLE);
-	}
+	
 	PL_TargetMode = mode;
 }
 // end of PL_SetMode()
@@ -480,7 +493,7 @@ static void PL_SetMode(PL_TARGET_MODE mode)
 //--------------------------------------------------------------------------------------------------
 // @Parameters    None.
 //**************************************************************************************************
-static void PL_Transfer( uint8_t* data,uint16_t size )
+ void PL_Transfer( uint8_t* data,uint16_t size )
 {
     for (uint32_t i=0;i<size;i++)
     {
@@ -506,7 +519,7 @@ static void PL_Transfer( uint8_t* data,uint16_t size )
 // @Parameters    timeout - in Tbit
 //				  size - size to receive	
 //**************************************************************************************************
-static RESULT_FUN PL_Receive( uint8_t* data, uint16_t size, uint16_t timeOut )
+ RESULT_FUN PL_Receive( uint8_t* data, uint16_t size, uint16_t timeOut )
 {
 	RESULT_FUN result = RESULT_NOT_OK;
 	
@@ -555,12 +568,12 @@ static RESULT_FUN PL_Receive( uint8_t* data, uint16_t size, uint16_t timeOut )
 //--------------------------------------------------------------------------------------------------
 // @Parameters    time in us. 1..0xffff
 //**************************************************************************************************
-static void PL_StartTimer( uint16_t time )
+ void PL_StartTimer( uint16_t time )
 {
 	TIM_Cmd(PL_TIMER, DISABLE);
-    TIM_ClearFlag(PL_TIMER, TIM_FLAG_CC1);
     TIM_SetCompare1(PL_TIMER, time);
     TIM_SetCounter(PL_TIMER, 0);
+    TIM_ClearFlag(PL_TIMER, TIM_FLAG_CC1);
     TIM_Cmd(PL_TIMER, ENABLE);
     
     PL_timerState = RUN;
@@ -580,7 +593,7 @@ static void PL_StartTimer( uint16_t time )
 //--------------------------------------------------------------------------------------------------
 // @Parameters    None.
 //**************************************************************************************************
-static void PL_GetStatusTimer( void )
+ void PL_GetStatusTimer( void )
 {
 	if(SET == TIM_GetFlagStatus(PL_TIMER, TIM_FLAG_CC1))
     {
@@ -605,7 +618,7 @@ static void PL_GetStatusTimer( void )
 //                size - size of data 
 //                typeMseq - type of M-sequence   
 //**************************************************************************************************
-static uint8_t PL_CalCKT( uint8_t* data, const uint16_t size, uint8_t typeMseq )
+ uint8_t PL_CalCKT( uint8_t* data, const uint16_t size, uint8_t typeMseq )
 {
     uint8_t checkSum = 0x52;
     uint8_t checkSum6Bits = 0;
