@@ -495,6 +495,14 @@ void PL_Task(void *pvParameters)
 //**************************************************************************************************
  void PL_Transfer( uint8_t* data,uint16_t size )
 {
+	// set trnsmiter in AF
+	GPIO_InitTypeDef GPIO_InitStruct;
+	GPIO_InitStruct.GPIO_Pin = PL_PIN_TRANSMMITER;
+	GPIO_InitStruct.GPIO_Mode = GPIO_Mode_AF_PP;
+	GPIO_InitStruct.GPIO_Speed = GPIO_Speed_50MHz;   
+	GPIO_Init(PL_PORT_IO_LINK, &GPIO_InitStruct);
+	
+	
     for (uint32_t i=0;i<size;i++)
     {
         while(RESET == USART_GetFlagStatus(PL_USART_IO_LINK, USART_FLAG_TC));
@@ -522,6 +530,14 @@ void PL_Task(void *pvParameters)
  RESULT_FUN PL_Receive( uint8_t* data, uint16_t size, uint16_t timeOut )
 {
 	RESULT_FUN result = RESULT_NOT_OK;
+	
+	// set transmiter in floating input
+	GPIO_InitTypeDef GPIO_InitStruct;
+	GPIO_InitStruct.GPIO_Pin = PL_PIN_TRANSMMITER;
+	GPIO_InitStruct.GPIO_Mode = GPIO_Mode_IN_FLOATING;
+	GPIO_InitStruct.GPIO_Speed = GPIO_Speed_50MHz;   
+	GPIO_Init(PL_PORT_IO_LINK, &GPIO_InitStruct);
+	
 	
 	PL_StartTimer( timeOut );
 	if (size < PL_SIZE_BUFF_DATA_REC)
