@@ -170,28 +170,28 @@ PL_TIMER_STATE PL_timerState = STOP;
 //**************************************************************************************************
 
 // Init PL
- void PL_Init(void);
+static void PL_Init(void);
 
 // Send Wake Up sequences
- RESULT_FUN PL_WakeUP(void);
+static RESULT_FUN PL_WakeUP(void);
 
 // Set mode PL
- void PL_SetMode(PL_TARGET_MODE mode);
+static void PL_SetMode(PL_TARGET_MODE mode);
 
 // Transfer message 
- void PL_Transfer( uint8_t* data,uint16_t size );
+static void PL_Transfer( uint8_t* data,uint16_t size );
 
 // receive message
- RESULT_FUN PL_Receive( uint8_t* data, uint16_t size, uint16_t timeOut );
+static RESULT_FUN PL_Receive( uint8_t* data, uint16_t size, uint16_t timeOut );
 
 // start timer
- void PL_StartTimer( uint16_t time );
+static void PL_StartTimer( uint16_t time );
 
 // Get status timer
- void PL_GetStatusTimer( void );
+static void PL_GetStatusTimer( void );
 
 // calculate CKT
- uint8_t PL_CalCKT( uint8_t* data, const uint16_t size, uint8_t typeMseq );
+static uint8_t PL_CalCKT( uint8_t* data, const uint16_t size, uint8_t typeMseq );
 
 
 //**************************************************************************************************
@@ -216,36 +216,37 @@ PL_TIMER_STATE PL_timerState = STOP;
 void PL_Task(void *pvParameters)
 {
     portBASE_TYPE xStatus;
-    //PL_MES_QUEUE PL_receiveMes;
+    PL_MES_QUEUE PL_receiveMes;
     PL_Init();
 	for(;;)
 	{
 		//Wait message
-		// xStatus = xQueueReceive( xPL_Queue, &PL_receiveMes, portMAX_DELAY );
+		xStatus = xQueueReceive( xPL_Queue, &PL_receiveMes, portMAX_DELAY );
 		
-        // if ( pdPASS == xStatus )
-        // {
-            // if (PL_WAKE_UP == PL_receiveMes)
-            // {
-				// for (int32_t i=0;i<PL_Nwu;i++)
-				// {
-					// if (RESULT_OK == PL_WakeUP())
-					// {
-						// break;
-					// }
-				// }
+        if ( pdPASS == xStatus )
+        {
+            if (PL_WAKE_UP == PL_receiveMes.typeMes)
+            {
+				for (int32_t i=0;i<PL_Nwu;i++)
+				{
+					if (RESULT_OK == PL_WakeUP())
+					{
+						//Send mes to DL. Put mes in queue
+						break;
+					}
+				}
 				
-            // }
+            }
  
-        // }
+        }
 		
-		for (int32_t i=0;i<PL_Nwu;i++)
-		{
-			if (RESULT_OK == PL_WakeUP())
-			{
-				break;
-			}
-		}
+		// for (int32_t i=0;i<PL_Nwu;i++)
+		// {
+			// if (RESULT_OK == PL_WakeUP())
+			// {
+				// break;
+			// }
+		// }
 		
 		vTaskDelay( 1 / portTICK_RATE_MS );
 		
@@ -273,7 +274,7 @@ void PL_Task(void *pvParameters)
 //--------------------------------------------------------------------------------------------------
 // @Parameters    None.
 //**************************************************************************************************
- void PL_Init(void)
+static void PL_Init(void)
 {
     TIM_DeInit(PL_TIMER);
 	TIM_TimeBaseInitTypeDef TIM_TimeBaseInitStruct;
@@ -314,7 +315,7 @@ void PL_Task(void *pvParameters)
 //--------------------------------------------------------------------------------------------------
 // @Parameters    None.
 //**************************************************************************************************
- RESULT_FUN PL_WakeUP( void )
+static RESULT_FUN PL_WakeUP( void )
 {
 	RESULT_FUN result = RESULT_NOT_OK;
 	// Set mode SIO
@@ -411,7 +412,7 @@ void PL_Task(void *pvParameters)
 //--------------------------------------------------------------------------------------------------
 // @Parameters    mode - INACTIVE,DI,DO,COM1,COM2,COM3
 //**************************************************************************************************
- void PL_SetMode(PL_TARGET_MODE mode)
+static void PL_SetMode(PL_TARGET_MODE mode)
 {
     if ((COM1 == mode) || (COM2 == mode) || (COM3 == mode))
 	{        
@@ -493,7 +494,7 @@ void PL_Task(void *pvParameters)
 //--------------------------------------------------------------------------------------------------
 // @Parameters    None.
 //**************************************************************************************************
- void PL_Transfer( uint8_t* data,uint16_t size )
+static void PL_Transfer( uint8_t* data,uint16_t size )
 {
 	// set trnsmiter in AF
 	GPIO_InitTypeDef GPIO_InitStruct;
@@ -527,7 +528,7 @@ void PL_Task(void *pvParameters)
 // @Parameters    timeout - in Tbit
 //				  size - size to receive	
 //**************************************************************************************************
- RESULT_FUN PL_Receive( uint8_t* data, uint16_t size, uint16_t timeOut )
+static RESULT_FUN PL_Receive( uint8_t* data, uint16_t size, uint16_t timeOut )
 {
 	RESULT_FUN result = RESULT_NOT_OK;
 	
@@ -584,7 +585,7 @@ void PL_Task(void *pvParameters)
 //--------------------------------------------------------------------------------------------------
 // @Parameters    time in us. 1..0xffff
 //**************************************************************************************************
- void PL_StartTimer( uint16_t time )
+static void PL_StartTimer( uint16_t time )
 {
 	TIM_Cmd(PL_TIMER, DISABLE);
     TIM_SetCompare1(PL_TIMER, time);
@@ -609,7 +610,7 @@ void PL_Task(void *pvParameters)
 //--------------------------------------------------------------------------------------------------
 // @Parameters    None.
 //**************************************************************************************************
- void PL_GetStatusTimer( void )
+static void PL_GetStatusTimer( void )
 {
 	if(SET == TIM_GetFlagStatus(PL_TIMER, TIM_FLAG_CC1))
     {
@@ -634,7 +635,7 @@ void PL_Task(void *pvParameters)
 //                size - size of data 
 //                typeMseq - type of M-sequence   
 //**************************************************************************************************
- uint8_t PL_CalCKT( uint8_t* data, const uint16_t size, uint8_t typeMseq )
+static uint8_t PL_CalCKT( uint8_t* data, const uint16_t size, uint8_t typeMseq )
 {
     uint8_t checkSum = 0x52;
     uint8_t checkSum6Bits = 0;
