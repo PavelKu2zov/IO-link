@@ -82,7 +82,8 @@ typedef enum DL_MES_TypeStateMachine_enum
 // Definitions of local (private) constants
 //**************************************************************************************************
 
-// None.
+//Device detection time 500...1000 ms
+#define PL_Tds				   (1000)	
               
 //**************************************************************************************************
 // Definitions of static global (private) variables
@@ -155,15 +156,15 @@ void DL_MES_Task(void *pvParameters)
 	{
 		// Get data from MH Queue
 		xStatus = xQueueReceive( xMH_Queue,&MH_Calls,0);
-		if ( xStatus != pdPASS )
+		if ( pdPASS == xStatus )
 		{
 			switch (MH_Calls)
 			{
-				case MH_CONF_COM1:break;
+				case MH_CONF_COM1: DL_MES_StateMachine = DL_MES_AWAITREPLY_1; break;
 				
-				case MH_CONF_COM2:break;
+				case MH_CONF_COM2: DL_MES_StateMachine = DL_MES_AWAITREPLY_1; break;
 				
-				case MH_CONF_COM3:break;
+				case MH_CONF_COM3: DL_MES_StateMachine = DL_MES_AWAITREPLY_1; break;
 				
 				case MH_CONF_STARTUP: DL_MES_StateMachine = DL_MES_STARTUP_2; break;
 				
@@ -212,7 +213,7 @@ void DL_MES_Task(void *pvParameters)
 		
 			
 		//Get data from PL_Transfer.ind Queue
-		xStatus = xQueueReceive( xPL_TransferIndQueue, &PL_TransferInd, portMAX_DELAY );
+		//xStatus = xQueueReceive( xPL_TransferIndQueue, &PL_TransferInd, portMAX_DELAY );
 		
 		
 	}
@@ -258,7 +259,23 @@ void DL_MES_Inactive_0(void)
 //**************************************************************************************************
 void DL_MES_AwaitReply_1( void );
 {
-
+	portTickType xTicksToWait = ((portTickType )PL_Tds) / portTICK_RATE_MS;
+	
+	//Get data from PL_Transfer.ind Queue
+	xStatus = xQueueReceive( xPL_TransferIndQueue, &PL_TransferInd, xTicksToWait  );
+	
+	if ( pdPASS == xStatus )
+	{
+		send data up
+		
+		DL_MES_StateMachine = DL_MES_STARTUP_2;	
+	}
+	else
+	{
+		send data up
+		
+		DL_MES_StateMachine = DL_MES_Inactive_0;
+	}
 	
 }
 // end of DL_MES_AwaitReply_1()

@@ -144,7 +144,7 @@ typedef enum PL_TARGET_MODE_enum
 #define PL_Nwu				  (3)	
 
 //Device detection time 0,5...1 s
-#define PL_Tds				   ()	
+//#define PL_Tds				   (1)	используется в DL 
 
 // Number hardware timer tick = 1 us
 #define PL_TIMER		      (TIM2)
