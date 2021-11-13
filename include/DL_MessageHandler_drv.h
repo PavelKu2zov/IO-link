@@ -29,47 +29,8 @@
 // Declarations of global (public) data types
 //**************************************************************************************************
 
-// Services of Physical layer 
-typedef enum 
-{
-    
-};
+// None.
 
-
-// 
-typedef enum _enum
-{
-    
-};
-
-// structure mes queue
-typedef struct DLMES_QUEUE_struct
-{
-    P_MES_QUEUE typeMes;
-    uint32_t size;
-    uint8_t *p;    
-}DLMES_QUEUE;
-
-// MH calls
-typedef enum IN_CALLS_enum
-{
-	MH_CONF_COM1=0,
-	MH_CONF_COM2,
-	MH_CONF_COM3,
-	MH_CONF_STARTUP,
-	MH_CONF_PREOPERATE,
-	MH_CONF_OPERATE,
-	MH_CONF_ACTIVE,
-	MH_CONF_INACTIVE,
-	OH_CONF_ACTIVE,
-	OH_CONF_INACTIVE,
-	IH_CONF_ACTIVE,
-	IH_CONF_INACTIVE,
-	CH_CONF_ACTIVE,
-	CH_CONF_INACTIVE,	
-	EH_CONF_ACTIVE,
-	EH_CONF_INACTIVE
-}IN_CALLS;
 
 //**************************************************************************************************
 // Definitions of global (public) constants

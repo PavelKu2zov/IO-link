@@ -41,7 +41,7 @@
 #include "FreeRTOS.h"
 #include "task.h"
 #include "main.h"
-
+#include "IO_LINK.h"
 
 //**************************************************************************************************
 // Verification of the imported configuration parameters
@@ -148,7 +148,7 @@ void DL_MES_Task(void *pvParameters)
 {
 	portBASE_TYPE xStatus;
 	DLMES_QUEUE PL_TransferInd;
-	IN_CALLS MH_Calls;
+	CALLS MH_Calls;
 	DL_MES_Init();
 	
 	
@@ -211,7 +211,7 @@ void DL_MES_Task(void *pvParameters)
 			default: break;
 		}
 		
-			
+		vTaskDelay( 250 / portTICK_RATE_MS );	
 		//Get data from PL_Transfer.ind Queue
 		//xStatus = xQueueReceive( xPL_TransferIndQueue, &PL_TransferInd, portMAX_DELAY );
 		
