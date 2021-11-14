@@ -130,7 +130,7 @@ void DL_ON_REQ_DATA_Task(void *pvParameters)
 	
 	for(;;)
 	{
-		// Get data from System Management
+		// Get data from DL mode handler
 		xStatus = xQueueReceive( xDL_OD_Queue,&DL_OD_State,0);
 		if ( pdPASS == xStatus )
 		{
@@ -153,7 +153,7 @@ void DL_ON_REQ_DATA_Task(void *pvParameters)
         {
             case DL_ON_REQ_DATA_INACTIVE_0: DL_ON_REQ_DATA_Inactive_0();break;
 			
-			case DL_ON_REQ_DATA_ISDU_1_INACTIVE_0: DL_ON_REQ_DATA_ISDU_1_Inactive_0();break;
+			case DL_ON_REQ_DATA_ISDU_1_INACTIVE_0: DL_ON_REQ_DATA_ISDU_1();break;
 			
 			case DL_ON_REQ_DATA_ISDU_1_IDLE_1: DL_ON_REQ_DATA_ISDU_1_Idle_1();break;
 			
@@ -176,7 +176,7 @@ void DL_ON_REQ_DATA_Task(void *pvParameters)
 
 
 //**************************************************************************************************
-// @Function      DL_ON_REQ_DATA_Inactive_0()
+// @Function      DL_ON_REQ_DATA_ISDU_1()
 //--------------------------------------------------------------------------------------------------
 // @Description   [description...]
 //--------------------------------------------------------------------------------------------------
@@ -187,10 +187,20 @@ void DL_ON_REQ_DATA_Task(void *pvParameters)
 // @Parameters    parameterZero - [description...]
 //                parameterOne  - [description...]
 //**************************************************************************************************
-static void DL_ON_REQ_DATA_Inactive_0(void)
+static void DL_ON_REQ_DATA_ISDU_1(void)
 {   
-	;
-} // end of DL_ON_REQ_DATA_Inactive_0()
+	// Get data from DL mode handler
+	xStatus = xQueueReceive( xDL_OD_Queue,&DL_OD_State,0);
+	if ( pdPASS == xStatus )
+	{			
+		if (OH_CONF_INACTIVE == DL_OD_State)
+		{
+			DL_ON_REQ_DATA_StateMachine = DL_ON_REQ_DATA_INACTIVE_0;
+		}
+		 
+	}
+	
+} // end of DL_ON_REQ_DATA_ISDU_1()
 
 
 
