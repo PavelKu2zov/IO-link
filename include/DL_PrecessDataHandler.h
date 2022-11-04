@@ -1,6 +1,6 @@
 //**************************************************************************************************
-// @Module        DL_MESSAGE_HANDLER.h
-// @Filename      DL_MessageHandler_drv.h
+// @Module        DL_PROC_DATA_HANDLER
+// @Filename      DL_PrecessDataHandler_drv.h
 //--------------------------------------------------------------------------------------------------
 // @Description   Interface of the PL module.
 //
@@ -13,8 +13,8 @@
 // XX.XX.XXXX     1.0.0    KPS         First release.
 //**************************************************************************************************
 
-#ifndef DL_MES_HANDLER_H
-#define DL_MES_HANDLER_H
+#ifndef DL_PROC_DATA_HANDLER_H
+#define DL_PROC_DATA_HANDLER_H
 
 
 
@@ -30,7 +30,6 @@
 //**************************************************************************************************
 
 // None.
-
 
 //**************************************************************************************************
 // Definitions of global (public) constants
@@ -51,10 +50,10 @@
 //**************************************************************************************************
 
 
-// Task of Physikal layer
-void PL_Task(void *pvParameters);
+// Task of dl_proc_data
+void DL_PROC_DATA_Task(void *pvParameters);
 
 
-#endif // DL_MES_HANDLER_H
+#endif // DL_PROC_DATA_HANDLER_H
 
 //****************************************** end of file *******************************************

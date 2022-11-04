@@ -1,8 +1,8 @@
 //**************************************************************************************************
-// @Module        PL
-// @Filename      PL_drv.h
+// @Module        DL_ON_REQ_DATA_HANDLER
+// @Filename      DL_OnRequestDataHandler_drv.h
 //--------------------------------------------------------------------------------------------------
-// @Description   Interface of the PL module.
+// @Description   Interface of the DL_OnRequestDataHandler module.
 //
 //--------------------------------------------------------------------------------------------------
 // @Version       1.0.0
@@ -13,8 +13,8 @@
 // XX.XX.XXXX     1.0.0    KPS         First release.
 //**************************************************************************************************
 
-#ifndef PL_DRV_H
-#define PL_DRV_H
+#ifndef DL_ON_REQ_DATA_HANDLER_H
+#define DL_ON_REQ_DATA_HANDLER_H
 
 
 
@@ -24,37 +24,16 @@
 
 #include "stm32f10x.h"
 
+#include "platform.h"
+
+#include "general_types.h"
 
 //**************************************************************************************************
 // Declarations of global (public) data types
 //**************************************************************************************************
 
-// Services of Physical layer 
-typedef enum 
-{
-    PL_SETMODE = 0,
-    PL_WAKEUP,
-	PL_TRANSFER
-}PL_SERVICE_enum;
+// None.
 
-
-// type message for queue
-typedef enum PL_TYPE_MES_QUEUE_enum
-{
-    PL_SET_MODE=0,
-    PL_WAKE_UP,
-    PL_TRANSFER_COM1,
-    PL_TRANSFER_COM2,
-    PL_TRANSFER_COM3
-}PL_TYPE_MES_QUEUE;
-
-// structure mes queue
-typedef struct PL_MES_QUEUE_struct
-{
-    PL_TYPE_MES_QUEUE typeMes;
-    uint32_t size;
-    uint8_t *p;    
-}PL_MES_QUEUE;
 
 //**************************************************************************************************
 // Definitions of global (public) constants
@@ -75,10 +54,13 @@ typedef struct PL_MES_QUEUE_struct
 //**************************************************************************************************
 
 
-// Task of Physikal layer
-void PL_Task(void *pvParameters);
+
+// Task of dl_on_req_data_handler
+extern void DL_ON_REQ_DATA_Task(void *pvParameters);
+
+extern void DL_OD_ISDU_Transport(const U8 i_service, const U16 index, const U16 subIndex, const U8 *dataTx, const U16 length);
 
 
-#endif // PL_DRV_H
+#endif // DL_ON_REQ_DATA_HANDLER_H
 
 //****************************************** end of file *******************************************

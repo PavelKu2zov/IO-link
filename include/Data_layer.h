@@ -1,20 +1,20 @@
 //**************************************************************************************************
-// @Module        DL_MODE_HANDLER.h
-// @Filename      DL_ModeHandler_drv.h
+// @Module        DATA_LAYER
+// @Filename      Data_layer.h
 //--------------------------------------------------------------------------------------------------
-// @Description   Interface of the PL module.
-//
+// @Description   Interface of the MODULE module.
+//                [Description...]
 //--------------------------------------------------------------------------------------------------
 // @Version       1.0.0
 //--------------------------------------------------------------------------------------------------
-// @Date          30.08.2021
+// @Date          XX.XX.XXXX
 //--------------------------------------------------------------------------------------------------
 // @History       Version  Author      Comment
-// XX.XX.XXXX     1.0.0    KPS         First release.
+// XX.XX.XXXX     1.0.0    XXX         First release.
 //**************************************************************************************************
 
-#ifndef DL_MODE_HANDLER_H
-#define DL_MODE_HANDLER_H
+#ifndef DATA_LAYER_H
+#define DATA_LAYER_H
 
 
 
@@ -22,7 +22,14 @@
 // Project Includes
 //**************************************************************************************************
 
+
 #include "stm32f10x.h"
+
+#include "platform.h"
+
+#include "general_types.h"
+
+#include "DL_MessageHandler.h"
 
 
 //**************************************************************************************************
@@ -30,6 +37,7 @@
 //**************************************************************************************************
 
 // None.
+
 
 //**************************************************************************************************
 // Definitions of global (public) constants
@@ -45,15 +53,27 @@
 // None.
 
 
+
 //**************************************************************************************************
 // Declarations of global (public) functions
 //**************************************************************************************************
 
+// Init data layer
+extern void DL_Init(void);
 
-// Task of Physikal layer
-void DL_MES_Task(void *pvParameters);
+// Set mode in Data layer
+extern void DL_SetMode(const U8 mode);
+
+// Get mode
+extern U8 DL_GetMode(void);
+
+// Read request from SM 
+extern void DL_Read(const U8* addr, DL_MES_RESPONSE_TYPE *const response);
+
+// Write request from SM
+extern void DL_Write(const U8* addr,const U8 *const data, DL_MES_RESPONSE_TYPE *const response);
 
 
-#endif // DL_MODE_HANDLER_H
+#endif // #ifndef DATA_LAYER_H
 
 //****************************************** end of file *******************************************

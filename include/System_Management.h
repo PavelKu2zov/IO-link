@@ -1,20 +1,20 @@
 //**************************************************************************************************
-// @Module        DL_PROC_DATA_HANDLER
-// @Filename      DL_PrecessDataHandler_drv.h
+// @Module        SYSTEM_MANAGEMENT
+// @Filename      module.h
 //--------------------------------------------------------------------------------------------------
-// @Description   Interface of the PL module.
-//
+// @Description   Interface of the MODULE module.
+//                [Description...]
 //--------------------------------------------------------------------------------------------------
 // @Version       1.0.0
 //--------------------------------------------------------------------------------------------------
-// @Date          30.08.2021
+// @Date          XX.XX.XXXX
 //--------------------------------------------------------------------------------------------------
 // @History       Version  Author      Comment
-// XX.XX.XXXX     1.0.0    KPS         First release.
+// XX.XX.XXXX     1.0.0    XXX         First release.
 //**************************************************************************************************
 
-#ifndef DL_PROC_DATA_HANDLER_H
-#define DL_PROC_DATA_HANDLER_H
+#ifndef SYSTEM_MANAGEMENT_H
+#define SYSTEM_MANAGEMENT_H
 
 
 
@@ -24,12 +24,16 @@
 
 #include "stm32f10x.h"
 
+#include "platform.h"
+
+#include "general_types.h"
 
 //**************************************************************************************************
 // Declarations of global (public) data types
 //**************************************************************************************************
 
 // None.
+
 
 //**************************************************************************************************
 // Definitions of global (public) constants
@@ -49,11 +53,17 @@
 // Declarations of global (public) functions
 //**************************************************************************************************
 
+// Init System management
+extern STD_RESULT SM_Init(void);
 
-// Task of Physikal layer
-void DL_PROC_DATA_Task(void *pvParameters);
+// Start System management
+extern void SM_Task(void);
+// read prm, set PREOPERATE mode
+extern void SM_SetPortConfig(void);
+// Set OPERATE mode
+extern void SM_Operate(void);   
 
 
-#endif // DL_PROC_DATA_HANDLER_H
+#endif // #ifndef SYSTEM_MANAGEMENT_H
 
 //****************************************** end of file *******************************************

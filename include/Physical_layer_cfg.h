@@ -36,7 +36,7 @@
 
 // User can enable/disable...
 // Valid values: ON / OFF
-#define MODULE_PARAMETER_ZERO                   (OFF)
+#define PL_SIZE_BUFF                            (256)
 
 // User can
 // Valid values: [x ; y)
