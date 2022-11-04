@@ -1,33 +1,33 @@
 //**************************************************************************************************
-// @Module        DL_ON_REQ_DATA_HANDLER
-// @Filename      DL_OnReqDataHandler.c
+// @Module        PORT_SERIAL
+// @Filename      portserial.c
 //--------------------------------------------------------------------------------------------------
-// @Platform      PLATFORM_NAME
+// @Platform      STM8S
 //--------------------------------------------------------------------------------------------------
-// @Compatible    COMPATIBLE_PROCESSOR_MODULE
+// @Compatible    STM8S-discovery board
 //--------------------------------------------------------------------------------------------------
-// @Description   Implementation of the DL_MODE_HANDLER functionality.
+// @Description   Implementation of the PORT_SERIAL functionality.
 //                
 //
 //                Abbreviations:
-//                  DL - Data link layer
-//                  
+//                  None.
+//                
 //
 //                Global (public) functions:
-//                  MODULE_functionZero()
-//                  MODULE_functionOne()
+//                  
+//                  
 //
 //                Local (private) functions:
-//                  MODULE_functionTwo()
-//                  MODULE_functionThree()
+//                  
+//                  
 //
 //--------------------------------------------------------------------------------------------------
 // @Version       1.0.0
 //--------------------------------------------------------------------------------------------------
-// @Date          XX.XX.XXXX
+// @Date          25.08.2021
 //--------------------------------------------------------------------------------------------------
 // @History       Version  Author      Comment
-// XX.XX.XXXX     1.0.0    XXX         First release.
+// XX.XX.XXXX     1.0.0    KPS         First release.
 //**************************************************************************************************
 
 
@@ -36,77 +36,65 @@
 // Project Includes
 //**************************************************************************************************
 
-// Native header
-#include "DL_OnRequestDataHandler.h"
-#include "DL_MessageHandler.h"
-#include "Physical_layer.h"
+/* ----------------------- Platform includes --------------------------------*/
+#include "stdlib.h"
+#include "port.h"
+#include "ModuleRAK811.h"
+#include "stdio.h"
 #include "IO_LINK.h"
-#include "software_timer.h"
-#include "terminal.h"
-
-
+/* ----------------------- Modbus includes ----------------------------------*/
+#include "mb.h"
+#include "mbport.h"
 
 //**************************************************************************************************
 // Verification of the imported configuration parameters
 //**************************************************************************************************
 
-//None.
+// None.
+
+
 
 //**************************************************************************************************
 // Definitions of global (public) variables
-//**************************************************************************************************
-
-//None.
-
-
-
-//**************************************************************************************************
-// Declarations of local (private) data types
-//**************************************************************************************************
-
-// State machine of DL mode handler
-typedef enum DL_OD_TypeStateMachine_enum
-{
-    DL_OD_INACTIVE_0=0,
-    DL_OD_ISDU_1_INACTIVE_0,
-	DL_OD_ISDU_1_IDLE_1,
-	DL_OD_ISDU_1_REQUEST_2,
-	DL_OD_ISDU_1_ERROR_4,
-	DL_OD_ISDU_1_WAIT_3,
-	DL_OD_ISDU_1_RESPONSE_5,
-    DL_OD_COMMAND_INACTIVE_0,
-	DL_OD_COMMAND_IDLE_1,
-	DL_OD_COMMAND_MASTER_COMMAND_2,
-	DL_OD_EVENT_INACTIVE_0,
-	DL_OD_EVENT_IDLE_1,
-	DL_OD_EVENT_CONFIRMATION_4,
-	DL_OD_EVENT_READ_EVENT_2,
-	DL_OD_EVENT_SIGNAL_EVENT_3,
-}DL_OD_TypeStateMachine;
-
-
-//**************************************************************************************************
-// Definitions of local (private) constants
 //**************************************************************************************************
 
 // None.
 
 
 //**************************************************************************************************
+// Declarations of local (private) data types
+//**************************************************************************************************
+
+// None.
+
+
+
+//**************************************************************************************************
+// Definitions of local (private) constants
+//**************************************************************************************************
+
+#define SIZE_TX_BUFF                (U16)(128)
+    
+
+
+//**************************************************************************************************
 // Definitions of static global (private) variables
 //**************************************************************************************************
-DL_OD_TypeStateMachine DL_OD_StateMachine;
 
-// software timer 
-static U8 nTimerHandle_OD = 0;
+static char ModBusRXByte = 0;
 
+//state of transmiter
+static BOOL RxEnable = FALSE;
+static BOOL TxEnable = FALSE;
 
-
+static S8 BuffTx[SIZE_TX_BUFF];
+static U16 indexBuffTx = 0;
 //**************************************************************************************************
 // Declarations of local (private) functions
 //**************************************************************************************************
 
-static U8 DL_MES_CHKPDU(U8 *data, U16 size);
+// None.
+
 
 
 //**************************************************************************************************
@@ -118,290 +106,267 @@ static U8 DL_MES_CHKPDU(U8 *data, U16 size);
 
 
 //**************************************************************************************************
-// @Function      DL_OD_Task()
+// @Function      vMBPortSerialEnable()
 //--------------------------------------------------------------------------------------------------
-// @Description   None.
+// @Description   Open serial port
 //--------------------------------------------------------------------------------------------------
-// @Notes         None.
+// @Notes         None.  
+//--------------------------------------------------------------------------------------------------
+// @ReturnValue   None.
+//--------------------------------------------------------------------------------------------------
+// @Parameters    xRxEnable - enable RX
+//                xTxEnable - enable TX  
+//**************************************************************************************************
+void vMBPortSerialEnable( BOOL xRxEnable, BOOL xTxEnable )
+{
+    RxEnable = xRxEnable;
+    TxEnable = xTxEnable;
+}// end of vMBPortSerialEnable
+
+
+
+//**************************************************************************************************
+// @Function      vMBPortGetStatusRxEnable()
+//--------------------------------------------------------------------------------------------------
+// @Description   Open serial port
+//--------------------------------------------------------------------------------------------------
+// @Notes         None.  
+//--------------------------------------------------------------------------------------------------
+// @ReturnValue   None.
+//--------------------------------------------------------------------------------------------------
+// @Parameters    xRxEnable - enable RX
+//                xTxEnable - enable TX  
+//**************************************************************************************************
+BOOL vMBPortGetStatusRxEnable( void )
+{
+    return RxEnable;
+}// end of vMBPortGetStatusRxEnable
+
+
+
+//**************************************************************************************************
+// @Function      vMBPortGetStatusTxEnable()
+//--------------------------------------------------------------------------------------------------
+// @Description   Open serial port
+//--------------------------------------------------------------------------------------------------
+// @Notes         None.  
+//--------------------------------------------------------------------------------------------------
+// @ReturnValue   None.
+//--------------------------------------------------------------------------------------------------
+// @Parameters    xRxEnable - enable RX
+//                xTxEnable - enable TX  
+//**************************************************************************************************
+BOOL vMBPortGetStatusTxEnable( void )
+{
+    return TxEnable;
+}// end of vMBPortGetStatusTxEnable
+
+
+//**************************************************************************************************
+// @Function      xMBPortSerialInit()
+//--------------------------------------------------------------------------------------------------
+// @Description   Initial serial port
+//--------------------------------------------------------------------------------------------------
+// @Notes         None.  
+//--------------------------------------------------------------------------------------------------
+// @ReturnValue   true - not initialized
+//                flase - initialized  
+//--------------------------------------------------------------------------------------------------
+// @Parameters    ucPort - 
+//                ulBaudRate - baudrate
+//                ucDataBits - number data bits
+//                eParity - party  
+//**************************************************************************************************
+BOOL xMBPortSerialInit( UCHAR ucPort, 
+                        ULONG ulBaudRate,
+                        UCHAR ucDataBits, 
+                        eMBParity eParity )
+{
+
+   xMBPortClearTxBuff( );
+    
+    return TRUE;
+} // end of xMBPortSerialInit()
+
+
+
+//**************************************************************************************************
+// @Function      vMBPortSerialClose()
+//--------------------------------------------------------------------------------------------------
+// @Description   Close serial port
+//--------------------------------------------------------------------------------------------------
+// @Notes         None.  
 //--------------------------------------------------------------------------------------------------
 // @ReturnValue   None.
 //--------------------------------------------------------------------------------------------------
 // @Parameters    None.
 //**************************************************************************************************
-void DL_OD_Task(const U8 call, U8 *const response)
+void vMBPortSerialClose( void )
 {
-			
-//    switch( call )
-//    {
-//        case OH_CONF_ACTIVE: DL_OD_StateMachine = DL_OD_ISDU_1_INACTIVE_0;break;
-//        
-//        case OH_CONF_INACTIVE: DL_OD_StateMachine = DL_OD_INACTIVE_0;break;
-//        
-//        case IH_CONF_ACTIVE: DL_OD_StateMachine = DL_OD_ISDU_1_IDLE_1;break;
-//        
-//        case IH_CONF_INACTIVE: DL_OD_StateMachine = DL_OD_ISDU_1_INACTIVE_0;break;
-//        
-//        default: break;
-//    }
-//		
-//        
-//    // move in state machine
-//    switch(DL_OD_StateMachine)
-//    {
-//        case DL_OD_INACTIVE_0: DL_OD_Inactive_0();break;
-//        
-//        case DL_OD_ISDU_1_INACTIVE_0: DL_OD_ISDU_1();break;
-//        
-//        case DL_OD_ISDU_1_IDLE_1: DL_OD_ISDU_1_Idle_1();break;
-//        
-//        default:break;
-//    }
-		
-}// end of DL_OD_Task()
+	// Disable USART
+    //USART_Cmd(LORA_UART, DISABLE);
+    
+}// end of vMBPortSerialClose
 
 
 
 //**************************************************************************************************
-// @Function      DL_OD_Init()
+// @Function      vMBPortClose()
 //--------------------------------------------------------------------------------------------------
-// @Description   None.
+// @Description   Close serial port
 //--------------------------------------------------------------------------------------------------
-// @Notes         None.
+// @Notes         None.  
 //--------------------------------------------------------------------------------------------------
 // @ReturnValue   None.
 //--------------------------------------------------------------------------------------------------
 // @Parameters    None.
 //**************************************************************************************************
-void DL_OD_Init(void)
+void vMBPortClose( void )
 {
-	SOFTTIMER_Create(&nTimerHandle_OD);
-	
-}// end of DL_OD_Init()
+    // Disable USART
+    //USART_Cmd(LORA_UART, DISABLE);
+    
+}// end of vMBPortClose
 
-
-
-//**************************************************************************************************
-// @Function      DL_OD_ReadParam()
-//--------------------------------------------------------------------------------------------------
-// @Description   None.
-//--------------------------------------------------------------------------------------------------
-// @Notes         None.
-//--------------------------------------------------------------------------------------------------
-// @ReturnValue   None.
-//--------------------------------------------------------------------------------------------------
-// @Parameters    addr 0..31
-//**************************************************************************************************
-void DL_OD_ReadParam(const U8* addr)
-{
-	
-}// end of DL_OD_ReadParam()
 
 
 
 //**************************************************************************************************
-// @Function      DL_OD_WriteParam()
+// @Function      xMBPortSerialPutByte()
 //--------------------------------------------------------------------------------------------------
-// @Description   None.
+// @Description   Send data
 //--------------------------------------------------------------------------------------------------
-// @Notes         None.
-//--------------------------------------------------------------------------------------------------
-// @ReturnValue   None.
-//--------------------------------------------------------------------------------------------------
-// @Parameters    addr 0..31
-//**************************************************************************************************
-void DL_OD_WriteParam(const U8* addr)
-{
-	
-}// end of DL_OD_WriteParam()
-
-
-
-//**************************************************************************************************
-// @Function      DL_OD_ISDU_Transport()
-//--------------------------------------------------------------------------------------------------
-// @Description   None.
-//--------------------------------------------------------------------------------------------------
-// @Notes         None.
+// @Notes         None.  
 //--------------------------------------------------------------------------------------------------
 // @ReturnValue   None.
 //--------------------------------------------------------------------------------------------------
 // @Parameters    None.
 //**************************************************************************************************
-void DL_OD_ISDU_Transport(const U8 i_service, const U16 index, const U16 subIndex, const U8 *dataTx, const U16 length)
+BOOL xMBPortSerialPutByte( CHAR ucByte )
 {
-	U8 dataISDU[TYPE_1_V_MC_CKT_8_OD];
-	dataISDU[0] = MC_READ | MC_CHANNEL_ISDU | ISDU_FLOW_CTRL_IDLE;
-	dataISDU[1] = 0 | TYPE_1_M_SEQ_CKT_BITS;
-	dataISDU[1]|= DL_MES_CalCKT( dataISDU,2  )&0x3F;
-	PL_TransferReq( dataISDU, 2);
-	
-	SOFTTIMER_Delay(nTimerHandle_OD,500000);
-	
-	// Req reading with ISDU_I_SERVICE_INDEX_8_BIT
-    if (ISDU_I_SERVICE_INDEX_8_BIT == i_service)
+    if (indexBuffTx == SIZE_TX_BUFF)
     {
-        // *dataOut = (i_service << 4) | ISDU_LEN_INDEX_8_BIT;
-        // dataOut++;
-        // *dataOut = (U8)index;  
-        // dataOut++;
-        // *dataOut = 0x00;
-        // *dataOut = DL_MES_CHKPDU(pBeginDataOut, ISDU_LEN_INDEX_8_BIT);
-        // *sizeOut = ISDU_LEN_INDEX_8_BIT;
+        indexBuffTx = 0;
     }
-	else if (ISDU_I_SERVICE_INDEX_8_BIT_SUBINDEX == i_service)
-	{
-		dataISDU[0] = MC_WRITE | MC_CHANNEL_ISDU | ISDU_FLOW_CTRL_START;
-		dataISDU[1] = 0x00 | TYPE_1_M_SEQ_CKT_BITS;
-		dataISDU[2] = (i_service << 4) | ISDU_LEN_8_BIT_SUBINDEX;
-		dataISDU[3] = (U8)index;
-		dataISDU[4] = (U8)subIndex;
-		dataISDU[5] = 0;
-		dataISDU[5] = DL_MES_CHKPDU(&dataISDU[2], 4);
-		dataISDU[6] = 0;
-		dataISDU[7] = 0;
-		dataISDU[8] = 0;
-		dataISDU[9] = 0;
-		dataISDU[1]|= DL_MES_CalCKT( dataISDU, 10 )&0x3F;
-		PL_TransferReq( dataISDU, 10);
-		
-		SOFTTIMER_Delay(nTimerHandle_OD,100000);
-		
-		//get answer
-		dataISDU[0] = MC_READ | MC_CHANNEL_ISDU | ISDU_FLOW_CTRL_START;
-		dataISDU[1] = 0 | TYPE_1_M_SEQ_CKT_BITS;
-		dataISDU[1]|= DL_MES_CalCKT( dataISDU,2  )&0x3F;
-		PL_TransferReq( dataISDU, 2);	
-	}
-	else if (ISDU_I_SERVICE_INDEX8_SUBINDEX_WR == i_service)
-	{
-		SOFTTIMER_Delay(nTimerHandle_OD,100000);
-		if (length == 1)
-		{
-			dataISDU[0] = MC_WRITE | MC_CHANNEL_ISDU | ISDU_FLOW_CTRL_START;
-			dataISDU[1] = 0x00 | TYPE_1_M_SEQ_CKT_BITS;
-			dataISDU[2] = (i_service << 4) | ISDU_LEN_NOT_EX_INDEX8_SUBINDEX_WR(5);
-			dataISDU[3] = (U8)index;
-			dataISDU[4] = (U8)subIndex;
-			dataISDU[5] = *dataTx;
-			dataISDU[6] = 0;
-			dataISDU[6] = DL_MES_CHKPDU(&dataISDU[2], 5);
-			dataISDU[7] = 0;
-			dataISDU[8] = 0;
-			dataISDU[9] = 0;
-			dataISDU[1]|= DL_MES_CalCKT( dataISDU, 10 )&0x3F;
-			PL_TransferReq( dataISDU, 10);
-		}else if (length == 4)
-		{
-			dataISDU[0] = MC_WRITE | MC_CHANNEL_ISDU | ISDU_FLOW_CTRL_START;
-			dataISDU[1] = 0x00 | TYPE_1_M_SEQ_CKT_BITS;
-			dataISDU[2] = (i_service << 4) | ISDU_LEN_NOT_EX_INDEX8_SUBINDEX_WR(8);
-			dataISDU[3] = (U8)index;
-			dataISDU[4] = (U8)subIndex;
-			dataISDU[5] = *dataTx;
-			dataTx++;
-			dataISDU[6] = *dataTx;
-			dataTx++;
-			dataISDU[7] = *dataTx;
-			dataTx++;
-			dataISDU[8] = *dataTx;
-			dataISDU[9] = DL_MES_CHKPDU(&dataISDU[2], 8);
-			dataISDU[1]|= DL_MES_CalCKT( dataISDU, 10 )&0x3F;
-			PL_TransferReq( dataISDU, 10);
-		}
-		
-		SOFTTIMER_Delay(nTimerHandle_OD,100000);
-	}
-}// end of DL_OD_ISDU_Transport()
+    if (0x0D == ucByte)
+    {
+        BuffTx[indexBuffTx++] = '0';
+        BuffTx[indexBuffTx++] = 'D';
+    }
+    else if  (0x0A == ucByte)
+    {
+        BuffTx[indexBuffTx++] = '0';
+        BuffTx[indexBuffTx++] = 'A';
+    }
+    else
+    {
+        snprintf(&BuffTx[indexBuffTx],3,"%X",ucByte);
+        indexBuffTx+=2;
+    }
+    
+   return TRUE;
+}// end of xMBPortSerialPutByte
 
 
 
 //**************************************************************************************************
-// @Function      DL_OD_ISDU_Abort()
+// @Function      xMBPortSerialPutByte()
 //--------------------------------------------------------------------------------------------------
-// @Description   None.
+// @Description   Send data
 //--------------------------------------------------------------------------------------------------
-// @Notes         None.
+// @Notes         None.  
 //--------------------------------------------------------------------------------------------------
 // @ReturnValue   None.
 //--------------------------------------------------------------------------------------------------
 // @Parameters    None.
 //**************************************************************************************************
-void DL_OD_ISDU_Abort(void)
+void xMBPortClearTxBuff( void )
 {
-	
-}// end of DL_OD_ISDU_Abort()
+    for(U16 i=0;i<SIZE_TX_BUFF;i++)
+    {
+        BuffTx[i]=0;
+    }
+    indexBuffTx = 0;
+}
 
 
 
 //**************************************************************************************************
-// @Function      DL_OD_Control()
+// @Function      xMBPortGetDataTxBuff()
 //--------------------------------------------------------------------------------------------------
-// @Description   None.
+// @Description   Send data
 //--------------------------------------------------------------------------------------------------
-// @Notes         None.
+// @Notes         None.  
 //--------------------------------------------------------------------------------------------------
 // @ReturnValue   None.
 //--------------------------------------------------------------------------------------------------
 // @Parameters    None.
 //**************************************************************************************************
-void DL_OD_Control(void)
+void xMBPortGetDataTxBuff( S8* pData, const U16 size )
 {
-	
-}// end of DL_OD_Control()
+    for(U16 i=0;i<size;i++)
+    {
+        *pData = BuffTx[i];
+        pData++;
+    }
+}// end of xMBPortGetDataTxBuff
 
 
 
 //**************************************************************************************************
-// @Function      DL_OD_Event_Conf()
+// @Function      xMBPortGetSizeDataTxBuff()
 //--------------------------------------------------------------------------------------------------
-// @Description   None.
+// @Description   Send data
 //--------------------------------------------------------------------------------------------------
-// @Notes         None.
+// @Notes         None.  
 //--------------------------------------------------------------------------------------------------
 // @ReturnValue   None.
 //--------------------------------------------------------------------------------------------------
 // @Parameters    None.
 //**************************************************************************************************
-void DL_OD_Event_Conf(void)
+U16 xMBPortGetSizeDataTxBuff( void )
 {
-	
-}// end of DL_OD_Event_Conf()
+  return indexBuffTx;
+}// end of xMBPortGetSizeDataTxBuff
 
 
 
 //**************************************************************************************************
-// @Function      DL_OD_PDUStatus()
+// @Function      xMBPortSerialGetByte()
 //--------------------------------------------------------------------------------------------------
-// @Description   None.
+// @Description   Get byte from serial port
 //--------------------------------------------------------------------------------------------------
-// @Notes         None.
+// @Notes         None.  
 //--------------------------------------------------------------------------------------------------
 // @ReturnValue   None.
 //--------------------------------------------------------------------------------------------------
-// @Parameters    None.
+// @Parameters    pucByte - pointer where store byte
 //**************************************************************************************************
-void DL_OD_PDUStatus(void)
+BOOL xMBPortSerialGetByte( CHAR * pucByte )
 {
-	
-}// end of DL_OD_PDUStatus()
+    *pucByte = ModBusRXByte;
+
+    return TRUE;
+}// end of xMBPortSerialGetByte
 
 
 
 //**************************************************************************************************
-// @Function      DL_OD_EventFlag()
+// @Function      xMBPortSerialPutByteInRxBuf()
 //--------------------------------------------------------------------------------------------------
-// @Description   None.
+// @Description   Put Byte In RxBuf
 //--------------------------------------------------------------------------------------------------
-// @Notes         None.
+// @Notes         None.  
 //--------------------------------------------------------------------------------------------------
 // @ReturnValue   None.
 //--------------------------------------------------------------------------------------------------
-// @Parameters    None.
+// @Parameters    pucByte - pointer where store byte
 //**************************************************************************************************
-void DL_OD_EventFlag(void)
+void xMBPortSerialPutByteInRxBuf( CHAR * pucByte )
 {
-	
-}// end of DL_OD_EventFlag()
+    ModBusRXByte = *pucByte;
+    
+}// end of xMBPortSerialPutByteInRxBuf
 
 
 
@@ -411,114 +376,7 @@ void DL_OD_EventFlag(void)
 //==================================================================================================
 //**************************************************************************************************
 
-
-
-//**************************************************************************************************
-// @Function      DL_OD_ISDU_1()
-//--------------------------------------------------------------------------------------------------
-// @Description   [description...]
-//--------------------------------------------------------------------------------------------------
-// @Notes
-//--------------------------------------------------------------------------------------------------
-// @ReturnValue   returnValue - [description...]
-//--------------------------------------------------------------------------------------------------
-// @Parameters    parameterZero - [description...]
-//                parameterOne  - [description...]
-//**************************************************************************************************
-static void DL_OD_ISDU_1(void)
-{   
-		
-//	switch (DL_OD_State)
-//	{
-//		case OH_CONF_INACTIVE: DL_OD_StateMachine = DL_OD_INACTIVE_0;break;//return
-//		
-//		case IH_CONF_ACTIVE: DL_OD_StateMachine = DL_OD_ISDU_1_IDLE_1;break;
-//		
-//		case IH_CONF_INACTIVE: DL_OD_StateMachine = DL_OD_ISDU_1_INACTIVE_0;break;
-//		
-//		default:break;
-//	}
-//	
-//	
-//	switch ( DL_OD_StateMachine )
-//	{
-//		case DL_ON_REQ_DATA_ISDU_1_IDLE_1: DL_ON_REQ_DATA_ISDU_1_Idle_1();break;
-//		
-//		default:break;
-//	}
-//	
-	
-	
-	
-	
-} // end of DL_OD_ISDU_1()
-
-
-
-
-//**************************************************************************************************
-// @Function      DL_ON_REQ_DATA_ISDU_1_Inactive_0()
-//--------------------------------------------------------------------------------------------------
-// @Description   [description...]
-//--------------------------------------------------------------------------------------------------
-// @Notes
-//--------------------------------------------------------------------------------------------------
-// @ReturnValue   returnValue - [description...]
-//--------------------------------------------------------------------------------------------------
-// @Parameters    parameterZero - [description...]
-//                parameterOne  - [description...]
-//**************************************************************************************************
-static void DL_OD_ISDU_1_Inactive_0(void)
-{   
-	;
-} // end of DL_ON_REQ_DATA_ISDU_1_Inactive_0()
-
-
-
-//**************************************************************************************************
-// @Function      DL_ON_REQ_DATA_ISDU_1_Idle_1()
-//--------------------------------------------------------------------------------------------------
-// @Description   [description...]
-//--------------------------------------------------------------------------------------------------
-// @Notes
-//--------------------------------------------------------------------------------------------------
-// @ReturnValue   returnValue - [description...]
-//--------------------------------------------------------------------------------------------------
-// @Parameters    parameterZero - [description...]
-//                parameterOne  - [description...]
-//**************************************************************************************************
-//static void DL_OD_ISDU_1_Idle_1(void)
-//{   
-//	
-//	
-//	
-//} // end of DL_OD_ISDU_1_Idle_1()
-
-
-
-//**************************************************************************************************
-// @Function      DL_MES_CHKPDU
-//--------------------------------------------------------------------------------------------------
-// @Description   None.
-//--------------------------------------------------------------------------------------------------
-// @Notes         None.
-//--------------------------------------------------------------------------------------------------
-// @ReturnValue   None.
-//--------------------------------------------------------------------------------------------------
-// @Parameters    None.         
-//**************************************************************************************************
-static U8 DL_MES_CHKPDU(U8 *data, U16 size)
-{
-    U8 result = 0;
-    
-    for(U16 i = 0; i < size;i++)
-    {
-        result ^= *data;
-        data++;
-    }
-    
-    return result;
-}// end of DL_MES_CHKPDU
+// None.
 
 
 //****************************************** end of file *******************************************

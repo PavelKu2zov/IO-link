@@ -1,25 +1,30 @@
 //**************************************************************************************************
-// @Module        DL_ON_REQ_DATA_HANDLER
-// @Filename      DL_OnReqDataHandler.c
+// @Module        SYSTEM_MANAGEMENT
+// @Filename      System_Management.c
 //--------------------------------------------------------------------------------------------------
 // @Platform      PLATFORM_NAME
 //--------------------------------------------------------------------------------------------------
 // @Compatible    COMPATIBLE_PROCESSOR_MODULE
 //--------------------------------------------------------------------------------------------------
-// @Description   Implementation of the DL_MODE_HANDLER functionality.
-//                
+// @Description   Implementation of the MODULE functionality.
+//                [Description...]
 //
 //                Abbreviations:
-//                  DL - Data link layer
 //                  
+//                 
 //
 //                Global (public) functions:
-//                  MODULE_functionZero()
-//                  MODULE_functionOne()
+//                  SM_Init()
+//                  SM_Task()
 //
 //                Local (private) functions:
-//                  MODULE_functionTwo()
-//                  MODULE_functionThree()
+//                  SM_Port_Inactive_0()
+//                  SM_Wait_On_DL_Preoperate_2()
+//                  SM_Check_Ser_Num_3()
+//                  SM_Wait_4()
+//                  SM_Operate_5()
+//                  
+//                  
 //
 //--------------------------------------------------------------------------------------------------
 // @Version       1.0.0
@@ -37,52 +42,43 @@
 //**************************************************************************************************
 
 // Native header
-#include "DL_OnRequestDataHandler.h"
+#include "IO_LINK.h"
+#include "System_Management.h"
 #include "DL_MessageHandler.h"
 #include "Physical_layer.h"
-#include "IO_LINK.h"
-#include "software_timer.h"
+#include "Data_layer.h"
+#include "DL_ModeHandler.h"
 #include "terminal.h"
-
-
+#include "software_timer.h"
 
 //**************************************************************************************************
 // Verification of the imported configuration parameters
 //**************************************************************************************************
 
-//None.
+// None.
+
 
 //**************************************************************************************************
 // Definitions of global (public) variables
 //**************************************************************************************************
 
-//None.
-
+// None.
 
 
 //**************************************************************************************************
 // Declarations of local (private) data types
 //**************************************************************************************************
 
-// State machine of DL mode handler
-typedef enum DL_OD_TypeStateMachine_enum
+// State machine of SM 
+typedef enum SM_TypeStateMachine_enum
 {
-    DL_OD_INACTIVE_0=0,
-    DL_OD_ISDU_1_INACTIVE_0,
-	DL_OD_ISDU_1_IDLE_1,
-	DL_OD_ISDU_1_REQUEST_2,
-	DL_OD_ISDU_1_ERROR_4,
-	DL_OD_ISDU_1_WAIT_3,
-	DL_OD_ISDU_1_RESPONSE_5,
-    DL_OD_COMMAND_INACTIVE_0,
-	DL_OD_COMMAND_IDLE_1,
-	DL_OD_COMMAND_MASTER_COMMAND_2,
-	DL_OD_EVENT_INACTIVE_0,
-	DL_OD_EVENT_IDLE_1,
-	DL_OD_EVENT_CONFIRMATION_4,
-	DL_OD_EVENT_READ_EVENT_2,
-	DL_OD_EVENT_SIGNAL_EVENT_3,
-}DL_OD_TypeStateMachine;
+    SM_PORT_INACTIVE_0=0,
+    SM_CHECK_COMPATIBILITY_1,
+    SM_WAIT_ON_DL_PREOPERATE_2,
+    SM_CHECK_SER_NUM_3,
+    SM_WAIT_4,
+	SM_OPERATE_5
+}SM_TypeStateMachine;
 
 
 //**************************************************************************************************
@@ -92,21 +88,38 @@ typedef enum DL_OD_TypeStateMachine_enum
 // None.
 
 
+
 //**************************************************************************************************
 // Definitions of static global (private) variables
 //**************************************************************************************************
-DL_OD_TypeStateMachine DL_OD_StateMachine;
+
+// System managment state machine
+static SM_TypeStateMachine SM_StateMachine;
 
 // software timer 
-static U8 nTimerHandle_OD = 0;
+static U8 nTimerHandle_SM = 0;
 
+// stored device's prm
+static U8 prmPage1[IO_LINK_SIZE_PAGE_1]; 
 
+static U8 prmPage2[IO_LINK_SIZE_PAGE_2]; 
 
 //**************************************************************************************************
 // Declarations of local (private) functions
 //**************************************************************************************************
 
-static U8 DL_MES_CHKPDU(U8 *data, U16 size);
+static void SM_Port_Inactive_0(void);
+
+static void SM_Check_Compatibility_1(void);
+
+static void SM_Wait_On_DL_Preoperate_2(void);
+
+static void SM_Check_Ser_Num_3(void);
+
+static void SM_Wait_4(void);
+
+static void SM_Operate_5(void);
+
 
 
 //**************************************************************************************************
@@ -118,290 +131,144 @@ static U8 DL_MES_CHKPDU(U8 *data, U16 size);
 
 
 //**************************************************************************************************
-// @Function      DL_OD_Task()
+// @Function      SM_Init()
 //--------------------------------------------------------------------------------------------------
-// @Description   None.
+// @Description   [description...]
 //--------------------------------------------------------------------------------------------------
-// @Notes         None.
+// @Notes
 //--------------------------------------------------------------------------------------------------
-// @ReturnValue   None.
+// @ReturnValue   returnValue - [description...]
 //--------------------------------------------------------------------------------------------------
-// @Parameters    None.
+// @Parameters    parameterZero - [description...]
+//                parameterOne  - [description...]
 //**************************************************************************************************
-void DL_OD_Task(const U8 call, U8 *const response)
+STD_RESULT SM_Init(void)
 {
-			
-//    switch( call )
-//    {
-//        case OH_CONF_ACTIVE: DL_OD_StateMachine = DL_OD_ISDU_1_INACTIVE_0;break;
-//        
-//        case OH_CONF_INACTIVE: DL_OD_StateMachine = DL_OD_INACTIVE_0;break;
-//        
-//        case IH_CONF_ACTIVE: DL_OD_StateMachine = DL_OD_ISDU_1_IDLE_1;break;
-//        
-//        case IH_CONF_INACTIVE: DL_OD_StateMachine = DL_OD_ISDU_1_INACTIVE_0;break;
-//        
-//        default: break;
-//    }
-//		
-//        
-//    // move in state machine
-//    switch(DL_OD_StateMachine)
-//    {
-//        case DL_OD_INACTIVE_0: DL_OD_Inactive_0();break;
-//        
-//        case DL_OD_ISDU_1_INACTIVE_0: DL_OD_ISDU_1();break;
-//        
-//        case DL_OD_ISDU_1_IDLE_1: DL_OD_ISDU_1_Idle_1();break;
-//        
-//        default:break;
-//    }
-		
-}// end of DL_OD_Task()
-
-
-
-//**************************************************************************************************
-// @Function      DL_OD_Init()
-//--------------------------------------------------------------------------------------------------
-// @Description   None.
-//--------------------------------------------------------------------------------------------------
-// @Notes         None.
-//--------------------------------------------------------------------------------------------------
-// @ReturnValue   None.
-//--------------------------------------------------------------------------------------------------
-// @Parameters    None.
-//**************************************************************************************************
-void DL_OD_Init(void)
-{
-	SOFTTIMER_Create(&nTimerHandle_OD);
-	
-}// end of DL_OD_Init()
-
-
-
-//**************************************************************************************************
-// @Function      DL_OD_ReadParam()
-//--------------------------------------------------------------------------------------------------
-// @Description   None.
-//--------------------------------------------------------------------------------------------------
-// @Notes         None.
-//--------------------------------------------------------------------------------------------------
-// @ReturnValue   None.
-//--------------------------------------------------------------------------------------------------
-// @Parameters    addr 0..31
-//**************************************************************************************************
-void DL_OD_ReadParam(const U8* addr)
-{
-	
-}// end of DL_OD_ReadParam()
-
-
-
-//**************************************************************************************************
-// @Function      DL_OD_WriteParam()
-//--------------------------------------------------------------------------------------------------
-// @Description   None.
-//--------------------------------------------------------------------------------------------------
-// @Notes         None.
-//--------------------------------------------------------------------------------------------------
-// @ReturnValue   None.
-//--------------------------------------------------------------------------------------------------
-// @Parameters    addr 0..31
-//**************************************************************************************************
-void DL_OD_WriteParam(const U8* addr)
-{
-	
-}// end of DL_OD_WriteParam()
-
-
-
-//**************************************************************************************************
-// @Function      DL_OD_ISDU_Transport()
-//--------------------------------------------------------------------------------------------------
-// @Description   None.
-//--------------------------------------------------------------------------------------------------
-// @Notes         None.
-//--------------------------------------------------------------------------------------------------
-// @ReturnValue   None.
-//--------------------------------------------------------------------------------------------------
-// @Parameters    None.
-//**************************************************************************************************
-void DL_OD_ISDU_Transport(const U8 i_service, const U16 index, const U16 subIndex, const U8 *dataTx, const U16 length)
-{
-	U8 dataISDU[TYPE_1_V_MC_CKT_8_OD];
-	dataISDU[0] = MC_READ | MC_CHANNEL_ISDU | ISDU_FLOW_CTRL_IDLE;
-	dataISDU[1] = 0 | TYPE_1_M_SEQ_CKT_BITS;
-	dataISDU[1]|= DL_MES_CalCKT( dataISDU,2  )&0x3F;
-	PL_TransferReq( dataISDU, 2);
-	
-	SOFTTIMER_Delay(nTimerHandle_OD,500000);
-	
-	// Req reading with ISDU_I_SERVICE_INDEX_8_BIT
-    if (ISDU_I_SERVICE_INDEX_8_BIT == i_service)
+    STD_RESULT nFuncResult = RESULT_OK;
+    
+    // Create timer nTimerHandle_SM
+    if (RESULT_OK == SOFTTIMER_Create(&nTimerHandle_SM))
     {
-        // *dataOut = (i_service << 4) | ISDU_LEN_INDEX_8_BIT;
-        // dataOut++;
-        // *dataOut = (U8)index;  
-        // dataOut++;
-        // *dataOut = 0x00;
-        // *dataOut = DL_MES_CHKPDU(pBeginDataOut, ISDU_LEN_INDEX_8_BIT);
-        // *sizeOut = ISDU_LEN_INDEX_8_BIT;
+    #ifdef DEBUG
+        TERMINAL_SendMessage("DL_Message Handler was initialized\n\r");
+    #endif  
+        nFuncResult = RESULT_OK;
     }
-	else if (ISDU_I_SERVICE_INDEX_8_BIT_SUBINDEX == i_service)
-	{
-		dataISDU[0] = MC_WRITE | MC_CHANNEL_ISDU | ISDU_FLOW_CTRL_START;
-		dataISDU[1] = 0x00 | TYPE_1_M_SEQ_CKT_BITS;
-		dataISDU[2] = (i_service << 4) | ISDU_LEN_8_BIT_SUBINDEX;
-		dataISDU[3] = (U8)index;
-		dataISDU[4] = (U8)subIndex;
-		dataISDU[5] = 0;
-		dataISDU[5] = DL_MES_CHKPDU(&dataISDU[2], 4);
-		dataISDU[6] = 0;
-		dataISDU[7] = 0;
-		dataISDU[8] = 0;
-		dataISDU[9] = 0;
-		dataISDU[1]|= DL_MES_CalCKT( dataISDU, 10 )&0x3F;
-		PL_TransferReq( dataISDU, 10);
-		
-		SOFTTIMER_Delay(nTimerHandle_OD,100000);
-		
-		//get answer
-		dataISDU[0] = MC_READ | MC_CHANNEL_ISDU | ISDU_FLOW_CTRL_START;
-		dataISDU[1] = 0 | TYPE_1_M_SEQ_CKT_BITS;
-		dataISDU[1]|= DL_MES_CalCKT( dataISDU,2  )&0x3F;
-		PL_TransferReq( dataISDU, 2);	
-	}
-	else if (ISDU_I_SERVICE_INDEX8_SUBINDEX_WR == i_service)
-	{
-		SOFTTIMER_Delay(nTimerHandle_OD,100000);
-		if (length == 1)
-		{
-			dataISDU[0] = MC_WRITE | MC_CHANNEL_ISDU | ISDU_FLOW_CTRL_START;
-			dataISDU[1] = 0x00 | TYPE_1_M_SEQ_CKT_BITS;
-			dataISDU[2] = (i_service << 4) | ISDU_LEN_NOT_EX_INDEX8_SUBINDEX_WR(5);
-			dataISDU[3] = (U8)index;
-			dataISDU[4] = (U8)subIndex;
-			dataISDU[5] = *dataTx;
-			dataISDU[6] = 0;
-			dataISDU[6] = DL_MES_CHKPDU(&dataISDU[2], 5);
-			dataISDU[7] = 0;
-			dataISDU[8] = 0;
-			dataISDU[9] = 0;
-			dataISDU[1]|= DL_MES_CalCKT( dataISDU, 10 )&0x3F;
-			PL_TransferReq( dataISDU, 10);
-		}else if (length == 4)
-		{
-			dataISDU[0] = MC_WRITE | MC_CHANNEL_ISDU | ISDU_FLOW_CTRL_START;
-			dataISDU[1] = 0x00 | TYPE_1_M_SEQ_CKT_BITS;
-			dataISDU[2] = (i_service << 4) | ISDU_LEN_NOT_EX_INDEX8_SUBINDEX_WR(8);
-			dataISDU[3] = (U8)index;
-			dataISDU[4] = (U8)subIndex;
-			dataISDU[5] = *dataTx;
-			dataTx++;
-			dataISDU[6] = *dataTx;
-			dataTx++;
-			dataISDU[7] = *dataTx;
-			dataTx++;
-			dataISDU[8] = *dataTx;
-			dataISDU[9] = DL_MES_CHKPDU(&dataISDU[2], 8);
-			dataISDU[1]|= DL_MES_CalCKT( dataISDU, 10 )&0x3F;
-			PL_TransferReq( dataISDU, 10);
-		}
-		
-		SOFTTIMER_Delay(nTimerHandle_OD,100000);
-	}
-}// end of DL_OD_ISDU_Transport()
+    else
+    {
+        nFuncResult = RESULT_NOT_OK;
+    } 
+    
+    SM_StateMachine = SM_PORT_INACTIVE_0;
+    
+    return nFuncResult;
+    
+} // end of SM_Init()
 
 
 
 //**************************************************************************************************
-// @Function      DL_OD_ISDU_Abort()
+// @Function      SM_Task()
 //--------------------------------------------------------------------------------------------------
-// @Description   None.
+// @Description   [description...]
 //--------------------------------------------------------------------------------------------------
-// @Notes         None.
+// @Notes
 //--------------------------------------------------------------------------------------------------
-// @ReturnValue   None.
+// @ReturnValue   returnValue - [description...]
 //--------------------------------------------------------------------------------------------------
-// @Parameters    None.
+// @Parameters    parameterZero - [description...]
 //**************************************************************************************************
-void DL_OD_ISDU_Abort(void)
+void SM_Task(void)
+{   
+        
+} // end of Sm_Task()
+
+
+
+//**************************************************************************************************
+// @Function      SM_SetPortConfig()
+//--------------------------------------------------------------------------------------------------
+// @Description   [description...]
+//--------------------------------------------------------------------------------------------------
+// @Notes
+//--------------------------------------------------------------------------------------------------
+// @ReturnValue   returnValue - [description...]
+//--------------------------------------------------------------------------------------------------
+// @Parameters    parameterZero - [description...]
+//**************************************************************************************************
+void SM_SetPortConfig(void)
 {
-	
-}// end of DL_OD_ISDU_Abort()
+    // Set Port config
+    SM_Port_Inactive_0();
+    
+    // read prm and set mode PREOPERATE
+    if (SM_StateMachine == SM_CHECK_COMPATIBILITY_1)
+    {
+        SM_Check_Compatibility_1();
+        
+         // Setting device
+        SM_Wait_On_DL_Preoperate_2();
+    }
+
+}// end of SM_SetPortConfig
 
 
 
 //**************************************************************************************************
-// @Function      DL_OD_Control()
+// @Function      SM_GetPortConfig()
 //--------------------------------------------------------------------------------------------------
-// @Description   None.
+// @Description   [description...]
 //--------------------------------------------------------------------------------------------------
-// @Notes         None.
+// @Notes
 //--------------------------------------------------------------------------------------------------
-// @ReturnValue   None.
+// @ReturnValue   returnValue - [description...]
 //--------------------------------------------------------------------------------------------------
-// @Parameters    None.
+// @Parameters    parameterZero - [description...]
 //**************************************************************************************************
-void DL_OD_Control(void)
+void SM_GetPortConfig(void)
 {
-	
-}// end of DL_OD_Control()
+    
+}// end of SM_GetPortConfig
 
 
 
 //**************************************************************************************************
-// @Function      DL_OD_Event_Conf()
+// @Function      SM_Operate()
 //--------------------------------------------------------------------------------------------------
-// @Description   None.
+// @Description   [description...]
 //--------------------------------------------------------------------------------------------------
-// @Notes         None.
+// @Notes
 //--------------------------------------------------------------------------------------------------
-// @ReturnValue   None.
+// @ReturnValue   returnValue - [description...]
 //--------------------------------------------------------------------------------------------------
-// @Parameters    None.
+// @Parameters    parameterZero - [description...]
 //**************************************************************************************************
-void DL_OD_Event_Conf(void)
+void SM_Operate(void)
 {
-	
-}// end of DL_OD_Event_Conf()
+    // Set mode OPERATE
+    SM_Operate_5();
+    
+    SM_StateMachine = SM_OPERATE_5;
+    
+}// end of SM_Operate
 
 
 
 //**************************************************************************************************
-// @Function      DL_OD_PDUStatus()
+// @Function      SM_PortMode()
 //--------------------------------------------------------------------------------------------------
-// @Description   None.
+// @Description   [description...]
 //--------------------------------------------------------------------------------------------------
-// @Notes         None.
+// @Notes
 //--------------------------------------------------------------------------------------------------
-// @ReturnValue   None.
+// @ReturnValue   returnValue - [description...]
 //--------------------------------------------------------------------------------------------------
-// @Parameters    None.
+// @Parameters    parameterZero - [description...]
 //**************************************************************************************************
-void DL_OD_PDUStatus(void)
+void SM_PortMode(void)
 {
-	
-}// end of DL_OD_PDUStatus()
-
-
-
-//**************************************************************************************************
-// @Function      DL_OD_EventFlag()
-//--------------------------------------------------------------------------------------------------
-// @Description   None.
-//--------------------------------------------------------------------------------------------------
-// @Notes         None.
-//--------------------------------------------------------------------------------------------------
-// @ReturnValue   None.
-//--------------------------------------------------------------------------------------------------
-// @Parameters    None.
-//**************************************************************************************************
-void DL_OD_EventFlag(void)
-{
-	
-}// end of DL_OD_EventFlag()
+    
+}// end of SM_PortMode
 
 
 
@@ -414,7 +281,7 @@ void DL_OD_EventFlag(void)
 
 
 //**************************************************************************************************
-// @Function      DL_OD_ISDU_1()
+// @Function      SM_Port_Inactive_0()
 //--------------------------------------------------------------------------------------------------
 // @Description   [description...]
 //--------------------------------------------------------------------------------------------------
@@ -425,100 +292,122 @@ void DL_OD_EventFlag(void)
 // @Parameters    parameterZero - [description...]
 //                parameterOne  - [description...]
 //**************************************************************************************************
-static void DL_OD_ISDU_1(void)
-{   
-		
-//	switch (DL_OD_State)
-//	{
-//		case OH_CONF_INACTIVE: DL_OD_StateMachine = DL_OD_INACTIVE_0;break;//return
-//		
-//		case IH_CONF_ACTIVE: DL_OD_StateMachine = DL_OD_ISDU_1_IDLE_1;break;
-//		
-//		case IH_CONF_INACTIVE: DL_OD_StateMachine = DL_OD_ISDU_1_INACTIVE_0;break;
-//		
-//		default:break;
-//	}
-//	
-//	
-//	switch ( DL_OD_StateMachine )
-//	{
-//		case DL_ON_REQ_DATA_ISDU_1_IDLE_1: DL_ON_REQ_DATA_ISDU_1_Idle_1();break;
-//		
-//		default:break;
-//	}
-//	
-	
-	
-	
-	
-} // end of DL_OD_ISDU_1()
-
-
-
-
-//**************************************************************************************************
-// @Function      DL_ON_REQ_DATA_ISDU_1_Inactive_0()
-//--------------------------------------------------------------------------------------------------
-// @Description   [description...]
-//--------------------------------------------------------------------------------------------------
-// @Notes
-//--------------------------------------------------------------------------------------------------
-// @ReturnValue   returnValue - [description...]
-//--------------------------------------------------------------------------------------------------
-// @Parameters    parameterZero - [description...]
-//                parameterOne  - [description...]
-//**************************************************************************************************
-static void DL_OD_ISDU_1_Inactive_0(void)
-{   
-	;
-} // end of DL_ON_REQ_DATA_ISDU_1_Inactive_0()
-
-
-
-//**************************************************************************************************
-// @Function      DL_ON_REQ_DATA_ISDU_1_Idle_1()
-//--------------------------------------------------------------------------------------------------
-// @Description   [description...]
-//--------------------------------------------------------------------------------------------------
-// @Notes
-//--------------------------------------------------------------------------------------------------
-// @ReturnValue   returnValue - [description...]
-//--------------------------------------------------------------------------------------------------
-// @Parameters    parameterZero - [description...]
-//                parameterOne  - [description...]
-//**************************************************************************************************
-//static void DL_OD_ISDU_1_Idle_1(void)
-//{   
-//	
-//	
-//	
-//} // end of DL_OD_ISDU_1_Idle_1()
-
-
-
-//**************************************************************************************************
-// @Function      DL_MES_CHKPDU
-//--------------------------------------------------------------------------------------------------
-// @Description   None.
-//--------------------------------------------------------------------------------------------------
-// @Notes         None.
-//--------------------------------------------------------------------------------------------------
-// @ReturnValue   None.
-//--------------------------------------------------------------------------------------------------
-// @Parameters    None.         
-//**************************************************************************************************
-static U8 DL_MES_CHKPDU(U8 *data, U16 size)
+static void SM_Port_Inactive_0(void)
 {
-    U8 result = 0;
-    
-    for(U16 i = 0; i < size;i++)
+     DL_SetMode(DL_START_UP);
+     
+     if( DL_START_UP == DL_GetMode())
+     {
+        SM_StateMachine = SM_CHECK_COMPATIBILITY_1;
+     }
+
+//    while( DL_START_UP != DL_GetMode())
+//    {
+//        #ifdef DEBUG
+//            TERMINAL_SendMessage( "DL_SetMode(DL_START_UP)\n\r");
+//        #endif   
+//        DL_SetMode(DL_START_UP);    
+//    }
+//    SM_StateMachine = SM_CHECK_COMPATIBILITY_1;
+} // end of SM_Port_Inactive_0()
+
+
+
+//**************************************************************************************************
+// @Function      SM_Check_Compatibility_1()
+//--------------------------------------------------------------------------------------------------
+// @Description   [description...]
+//--------------------------------------------------------------------------------------------------
+// @Notes
+//--------------------------------------------------------------------------------------------------
+// @ReturnValue   returnValue - [description...]
+//--------------------------------------------------------------------------------------------------
+// @Parameters    parameterZero - [description...]
+//                parameterOne  - [description...]
+//**************************************************************************************************
+static void SM_Check_Compatibility_1(void)
+{
+    U8 data,addr;
+    DL_MES_RESPONSE_TYPE response = {NOT_OK,0};
+	
+    // read page 1 adr 0x01...0x06
+    for(U8 i = 1; i < 7; i++)
     {
-        result ^= *data;
-        data++;
-    }
+        DL_Read(&i,&response);
+        prmPage1[i] = response.data;
+    } 
     
-    return result;
-}// end of DL_MES_CHKPDU
+    // send DEVICE_MASTERIDENT
+    addr = MASTER_COMMAND;
+    data = DEVICE_MASTERIDENT;
+	response.state = NOT_OK;
+    DL_Write(&addr,&data,&response);
+    
+    data = DEVICE_PREOPERATE;
+	// set PREOPERATE mode in device
+    DL_Write(&addr,&data,&response);
+	// set POREOPERATE mode in master
+	DL_SetMode(DL_PREOPERATE);
+
+    SM_StateMachine = SM_WAIT_ON_DL_PREOPERATE_2;
+      
+}// end of SM_Check_Compatibility_1()
+
+
+
+//**************************************************************************************************
+// @Function      SM_Wait_On_DL_Preoperate_2()
+//--------------------------------------------------------------------------------------------------
+// @Description   [description...]
+//--------------------------------------------------------------------------------------------------
+// @Notes
+//--------------------------------------------------------------------------------------------------
+// @ReturnValue   returnValue - [description...]
+//--------------------------------------------------------------------------------------------------
+// @Parameters    parameterZero - [description...]
+//                parameterOne  - [description...]
+//**************************************************************************************************
+static void SM_Wait_On_DL_Preoperate_2(void)
+{   
+
+    SM_StateMachine = SM_WAIT_4;
+    
+}// end of SM_Wait_On_DL_Preoperate_2()
+
+
+
+//**************************************************************************************************
+// @Function      SM_Operate_5()
+//--------------------------------------------------------------------------------------------------
+// @Description   [description...]
+//--------------------------------------------------------------------------------------------------
+// @Notes
+//--------------------------------------------------------------------------------------------------
+// @ReturnValue   returnValue - [description...]
+//--------------------------------------------------------------------------------------------------
+// @Parameters    parameterZero - [description...]
+//                parameterOne  - [description...]
+//**************************************************************************************************
+static void SM_Operate_5(void)
+{   
+	U8 data,addr;
+    DL_MES_RESPONSE_TYPE response = {NOT_OK,0};
+    
+    // send DEVICE_OPERATE
+    addr = MASTER_COMMAND;
+    data = DEVICE_OPERATE;
+	response.state = NOT_OK;
+    DL_Write(&addr,&data,&response);
+	
+	DL_SetMode(DL_OPERATE);
+	
+    data = DEVICE_PROCESS_DATA_OUTPUT_OPERATE;
+    response.state = NOT_OK;
+    // set OPERATE mode in device
+    DL_Write(&addr,&data,&response);
+
+    
+}// end of SM_Operate_5()
 
 
 //****************************************** end of file *******************************************
