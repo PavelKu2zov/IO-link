@@ -37,13 +37,17 @@
 //**************************************************************************************************
 
 // Native header
+#include "stm32f10x.h"
+#include <stm32f10x_usart.h>
+#include <misc.h>
+#include "stm32f10x_gpio.h"
 #include "Physical_layer.h"
 #include "IO_LINK.h"
 #include "software_timer.h"
 #include "terminal.h"
 // circle buffer
 #include "circ_buffer.h"
-#include "intrinsics.h"
+//#include "intrinsics.h"
 
 
 //**************************************************************************************************

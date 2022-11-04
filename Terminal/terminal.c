@@ -38,6 +38,10 @@
 //**************************************************************************************************
 
 // Native header
+#include <stm32f10x_gpio.h>
+#include <stm32f10x_usart.h>
+#include <stm32f10x_dma.h>
+#include <misc.h>
 #include "terminal.h"
 #include "circ_buffer.h"
 

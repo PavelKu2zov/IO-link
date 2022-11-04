@@ -44,6 +44,7 @@
 //**************************************************************************************************
 
 /* Scheduler includes. */
+#include <stm32f10x_gpio.h>
 #include "stm32f10x.h"
 #include "platform.h"
 #include "general_types.h"
@@ -59,13 +60,10 @@
 
 #include "ModuleRAK811.h"
 
-#include "mb.h"
-#include "mbport.h"
-#include "mbutils.h"
-#include "mbascii.h"
-
 
 void TestUart(uint32_t baudrate);
+
+
 
 //**************************************************************************************************
 // Definitions of global (public) variables
@@ -116,8 +114,8 @@ static U8 dataISDU[25];
 static float position=0;
 
 
-static USHORT reg[64];
-static USHORT adr = 0;
+static U16 reg[64];
+static U16 adr = 0;
 static U8 coil = 0 ;
 
 FloatU16 floatToU16;
@@ -155,7 +153,7 @@ int main(void)
     SOFTTIMER_HardInit();
 	RAK811_init();
 	//init Hard timer for ModBus
-	MBPortTimerInitHard();
+//	MBPortTimerInitHard();
     GPIO_SetBits(GPIOB,GPIO_Pin_12);// LED COM_LOST not light
     GPIO_SetBits(GPIOB,GPIO_Pin_13);// LED communication MoDBus not light
     FactorOfposition = LenPerRevolution/StepPerRevolution; 
@@ -167,9 +165,9 @@ int main(void)
     SOFTTIMER_EVENT eventPollEncoder = NOT_EXPIRED;
     
      //init ModBus
-    eMBInit( MB_ASCII, MODBUS_SLAVE_ADDR, 2, 115200, MB_PAR_NONE );
+//    eMBInit( MB_ASCII, MODBUS_SLAVE_ADDR, 2, 115200, MB_PAR_NONE );
     // Enable the Modbus Protocol Stack.
-    eMBEnable();
+//    eMBEnable();
     
     BOOLEAN recOK = FALSE;
     
@@ -322,310 +320,12 @@ int main(void)
                     
                     SOFTTIMER_StartTimer(nTimerHandle_PollEncoder, 100000);
                 }
-               
-                
-            }  
-            
-            // Is byte for ModBus?
-            S8 byteModBus=0;
-            while (RAK811_GetByteMODBUS_FSM(&byteModBus) == TRUE)
-            {
-                //  Put byte in RxBuf ModBus
-                xMBPortSerialPutByteInRxBuf(&byteModBus);
-                // Call FSM to parcing ModBus's data
-                pxMBFrameCBByteReceived( );
             }
-            
-            // polling ModBus
-            eMBPoll();
-            // if state Tx ModBus ENABLE
-            if(TRUE == vMBPortGetStatusTxEnable())
-            {
-                BOOLEAN recOK = FALSE;
-                // try to change mode three times
-                for (U8 i=0;i<3;i++)
-                {
-                    //Set transmit mode RAK811
-                    RAK811_confTransferMode(RAK811_SENDER_MODE);
-                    // Did it receive OK?
-                    SOFTTIMER_StartTimer(nTimerHandle, 500000);
-                    SOFTTIMER_EVENT event = NOT_EXPIRED;
 
-                    while(EXPIRED != event)
-                    {
-                        SOFTTIMER_GetEvent(nTimerHandle, &event);
-                        if ( TRUE == RAK811_IsReceiveOK() )
-                        {
-                            recOK = TRUE;
-                            break;
-                        }
-                    }
-                    if (TRUE == recOK)
-                    {
-                        break;
-                    }
-                }
-                //clear MBPortClearTxBuff
-				xMBPortClearTxBuff();
-                // put data from ModBus to RAK811 layer
-                while(TRUE == vMBPortGetStatusTxEnable())
-                {
-                    pxMBFrameCBTransmitterEmpty();
-                }
-                // call RAK811 send data mode
-                recOK = FALSE;
-                // try to Send data RAK811 three times
-				 
-				S8 tempData[128];
-				U16 tempSizeData = xMBPortGetSizeDataTxBuff();
-				xMBPortGetDataTxBuff(tempData,tempSizeData);
-                for (U8 i=0;i<3;i++)
-                {
+            // Send data to Lora
+            // TO DO
 
-                    RAK811_sendData(tempData, tempSizeData);
-                    // Did it receive OK?
-                    SOFTTIMER_StartTimer(nTimerHandle, 500000);
-                    SOFTTIMER_EVENT event = NOT_EXPIRED;
-
-                    while(EXPIRED != event)
-                    {
-                        SOFTTIMER_GetEvent(nTimerHandle, &event);
-                        if ( TRUE == RAK811_IsReceiveOK() )
-                        {
-                            recOK = TRUE;
-                            break;
-                        }
-                    }
-                    if (TRUE == recOK)
-                    {
-                        break;
-                    }
-                }
-				// try to change mode three times
-                for (U8 i=0;i<3;i++)
-                {
-                    //Set transmit mode RAK811
-                    RAK811_confTransferMode(RAK811_RECEIVER_MODE);
-                    // Did it receive OK?
-                    SOFTTIMER_StartTimer(nTimerHandle, 500000);
-                    SOFTTIMER_EVENT event = NOT_EXPIRED;
-
-                    while(EXPIRED != event)
-                    {
-                        SOFTTIMER_GetEvent(nTimerHandle, &event);
-                        if ( TRUE == RAK811_IsReceiveOK() )
-                        {
-                            recOK = TRUE;
-                            break;
-                        }
-                    }
-                    if (TRUE == recOK)
-                    {
-                        break;
-                    }
-                }
-            }                   
         }while((EXPIRED != eventPollEncoder)||(PL_GetCOMState() != COM_STATE_LOST ));
     }
     
 }// end of main()
-
-
-
-//**************************************************************************************************
-// @Function      eMBRegInputCB
-//--------------------------------------------------------------------------------------------------
-// @Description   Callback function used if the value of a Input Register is required by 
-//                  the protocol stack ModBus
-//--------------------------------------------------------------------------------------------------
-// @Notes          The starting register address is given by usAddress and the last 
-//                 register is given by usAddress + usNRegs - 1. 
-//--------------------------------------------------------------------------------------------------
-// @ReturnValue   MB_ENOERR -  If no error occurred 
-//                MB_ENOREG - If the application can not supply values for registers within this range
-//                MB_ETIMEDOUT - If the requested register block is currently not available and the 
-//                               application dependent response timeout would be violated 
-//                MB_EIO - If an unrecoverable error occurred          
-//--------------------------------------------------------------------------------------------------
-// @Parameters    pucRegBuffer - a buffer where the callback function should write the current value 
-//                               of the modbus registers to.
-//                usAddress -  	The starting address of the register. Input registers are 
-//                              in the range 1 - 65535.    
-//                usNRegs - Number of registers the callback function must supply.
-//**************************************************************************************************
-eMBErrorCode eMBRegInputCB( UCHAR * pucRegBuffer, 
-                            USHORT usAddress,
-                            USHORT usNRegs )
-{
-return MB_ENOERR;
-}// end of eMBRegInputCB
-
-
-
-//**************************************************************************************************
-// @Function      eMBRegHoldingCB
-//--------------------------------------------------------------------------------------------------
-// @Description   Callback function used if a Holding Register value is read or 
-//                written by the protocol stack ModBus
-//--------------------------------------------------------------------------------------------------
-// @Notes          The starting register address is given by usAddress and the last register is 
-//                 given by usAddress + usNRegs - 1.
-//--------------------------------------------------------------------------------------------------
-// @ReturnValue   MB_ENOERR -  If no error occurred 
-//                MB_ENOREG - If the application can not supply values for registers within this range
-//                MB_ETIMEDOUT - If the requested register block is currently not available and the 
-//                               application dependent response timeout would be violated 
-//                MB_EIO - If an unrecoverable error occurred          
-//--------------------------------------------------------------------------------------------------
-// @Parameters    pucRegBuffer - If the application registers values should be updated the buffer 
-//                               points to the new registers values.
-//                usAddress   -  The starting address of the register.                              
-//                usNRegs     -  Number of registers to read or write.
-//                eMode       -  mode message 
-//**************************************************************************************************
-eMBErrorCode eMBRegHoldingCB( UCHAR * pucRegBuffer, 
-                              USHORT usAddress,
-                              USHORT usNRegs, 
-                              eMBRegisterMode eMode )
-{
-    
-    int iRegIndex = 0;
-    eMBErrorCode result;
-    if (PL_GetCOMState() != COM_STATE_LOST )
-    {
-        
-        if ( MB_REG_WRITE  == eMode ) 
-        {   
-
-        while( usNRegs > 0 )
-        {
-        //        reg[iRegIndex] = *pucRegBuffer++ << 8;
-        //        reg[iRegIndex] |= *pucRegBuffer++;
-        //        iRegIndex++;
-        //        usNRegs--;
-        }
-
-        }
-        else
-        {
-        for (int i=usAddress;i<usAddress+usNRegs;i++)
-        {
-            if (i == 1) 
-            {
-                *pucRegBuffer = (UCHAR)reg[0];
-                pucRegBuffer++;
-                *pucRegBuffer = (UCHAR)(reg[0]>>8);
-                pucRegBuffer++;
-            }
-            else if (i == 2)
-            {
-                *pucRegBuffer = (UCHAR)reg[1];
-                pucRegBuffer++;
-                *pucRegBuffer = (UCHAR)(reg[1]>>8);
-                pucRegBuffer++;
-            }
-            else if (i == 3)
-            {
-                *pucRegBuffer = (UCHAR)reg[2];
-                pucRegBuffer++;
-                *pucRegBuffer = (UCHAR)(reg[2]>>8);
-                pucRegBuffer++;
-            }
-            else if (i == 4)
-            {
-                *pucRegBuffer = (UCHAR)reg[3];
-                pucRegBuffer++;
-                *pucRegBuffer = (UCHAR)(reg[3]>>8);
-                pucRegBuffer++;
-            }
-            else
-            {
-                *pucRegBuffer = 0;
-                pucRegBuffer++; 
-                *pucRegBuffer = 0;
-                pucRegBuffer++;
-            }
-        }    
-        }
-        result = MB_ENOERR;
-    }
-    else
-    {
-        result = MB_EX_SLAVE_DEVICE_FAILURE;
-    }
-  
-  return result;
-}//end of eMBRegHoldingCB
-
-
-
-//**************************************************************************************************
-// @Function      eMBRegCoilsCB
-//--------------------------------------------------------------------------------------------------
-// @Description   Callback function used if a Coil Register value is read or written 
-//                by the protocol stack
-//--------------------------------------------------------------------------------------------------
-// @Notes         None.
-//--------------------------------------------------------------------------------------------------
-// @ReturnValue   MB_ENOERR -  If no error occurred 
-//                MB_ENOREG - If the application can not supply values for registers within this range
-//                MB_ETIMEDOUT - If the requested register block is currently not available and the 
-//                               application dependent response timeout would be violated 
-//                MB_EIO - If an unrecoverable error occurred          
-//--------------------------------------------------------------------------------------------------
-// @Parameters    pucRegBuffer - The bits are packed in bytes where the first coil starting at address 
-//                               usAddress is stored in the LSB of the first byte 
-//                               in the buffer pucRegBuffer
-//                usAddress   -  The first coil number
-//                usNCoils    -  Number of coil values requested
-//                eMode       -  mode message 
-//**************************************************************************************************
-eMBErrorCode eMBRegCoilsCB( UCHAR *pucRegBuffer, 
-                            USHORT usAddress,
-                            USHORT usNCoils, 
-                            eMBRegisterMode eMode )
-{
-  U8 tmCoil[2] = {0,0};
-  
-    if ( MB_REG_WRITE == eMode ) 
-    {   
-       // coil = xMBUtilGetBits( pucRegBuffer, ADR_PWR_SWITCH, 1 );
-    }
-    else
-    {   
-        // xMBUtilSetBits( tmCoil, ADR_PWR_SWITCH, 1, coil );
-        // *pucRegBuffer = tmCoil[0];
-    }
- 
-  return MB_ENOERR;
-}// end of eMBRegCoilsCB
-
-
-
-//**************************************************************************************************
-// @Function      eMBRegDiscreteCB
-//--------------------------------------------------------------------------------------------------
-// @Description   Callback function used if a Input Discrete Register value is read by 
-//                the protocol stack.
-//--------------------------------------------------------------------------------------------------
-// @Notes         None.
-//--------------------------------------------------------------------------------------------------
-// @ReturnValue   MB_ENOERR -  If no error occurred 
-//                MB_ENOREG - If the application can not supply values for registers within this range
-//                MB_ETIMEDOUT - If the requested register block is currently not available and the 
-//                               application dependent response timeout would be violated 
-//                MB_EIO - If an unrecoverable error occurred          
-//--------------------------------------------------------------------------------------------------
-// @Parameters    pucRegBuffer - The buffer should be updated with the current coil values
-//                usAddress   -  The starting address of the first discrete input
-//                usNDiscrete -  Number of discrete input values
-//**************************************************************************************************
-eMBErrorCode eMBRegDiscreteCB( UCHAR * pucRegBuffer, 
-                               USHORT usAddress,
-                               USHORT usNDiscrete )
-{
-    return MB_ENOERR;
-}// end of eMBRegDiscreteCB
-
-
-
