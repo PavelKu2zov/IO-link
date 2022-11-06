@@ -225,7 +225,8 @@ int main(void)
     for (U8 i=0;i<3;i++)
     {
         //Set transmit mode RAK811
-        RAK811_confTransferMode(RAK811_RECEIVER_MODE);
+//        RAK811_confTransferMode(RAK811_RECEIVER_MODE);
+        RAK811_confTransferMode(RAK811_SENDER_MODE);
         // Did it receive OK?
         SOFTTIMER_StartTimer(nTimerHandle, 500000);
         SOFTTIMER_EVENT event = NOT_EXPIRED;
@@ -317,13 +318,29 @@ int main(void)
                     reg[1] = dataPD[6] | (((U16)dataPD[7])<<8);
                     reg[2] = dataPD[0] | (((U16)dataPD[1])<<8);
                     reg[3] = dataPD[2] | (((U16)dataPD[3])<<8);
-                    
-                    SOFTTIMER_StartTimer(nTimerHandle_PollEncoder, 100000);
+
+                    // Send data to Lora
+                    RAK811_SendRawData(dataPD, 8U);
+
+//                    // Did it receive OK?
+//                    SOFTTIMER_StartTimer(nTimerHandle, 120000);
+//                    SOFTTIMER_EVENT event = NOT_EXPIRED;
+//                    recOK = FALSE;
+//
+//                    while(EXPIRED != event)
+//                    {
+//                        SOFTTIMER_GetEvent(nTimerHandle, &event);
+//                        if ( TRUE == RAK811_IsReceiveOK() )
+//                        {
+//                            recOK = TRUE;
+//                            break;
+//                        }
+//                    }
+
+
+                    SOFTTIMER_StartTimer(nTimerHandle_PollEncoder, 150000);
                 }
             }
-
-            // Send data to Lora
-            // TO DO
 
         }while((EXPIRED != eventPollEncoder)||(PL_GetCOMState() != COM_STATE_LOST ));
     }

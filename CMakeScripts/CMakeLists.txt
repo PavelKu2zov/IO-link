@@ -20,7 +20,7 @@ set(CMAKE_EXECUTABLE_SUFFIX ".elf")
 # Linker script file
 set(LINKER_SCRIPT ${CMAKE_SOURCE_DIR}/../Config/STM32F103_FLASH.ld)
 # Set startup file
-set(STARTUP_FILE ${CMAKE_SOURCE_DIR}/../StartUp/startup_stm32f10x_ld.s)
+set(STARTUP_FILE ${CMAKE_SOURCE_DIR}/../StartUp/startup_stm32f10x_md.s)
 #set(SRC_RTT_ASM_DIR ${CMAKE_SOURCE_DIR}/../../SEGGER_RTT/SEGGER_RTT_ASM_ARMv7M.S)
 set(SPL "${CMAKE_SOURCE_DIR}/../../STM32F10x_StdPeriph_Lib_V3.5.0/Libraries")
 
