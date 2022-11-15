@@ -91,6 +91,16 @@ typedef union FloatU16_union
 
 #define MODBUS_SLAVE_ADDR		(0x01)
 
+// Size time stamp
+#define SIZE_TIME_STAMP         (6U)
+
+// Size payload
+#define SIZE_PAYLOAD            (8U)
+
+// Size raw data
+#define SIZE_RAW_DATA           (SIZE_TIME_STAMP + SIZE_PAYLOAD)
+
+
 // Step per revolution
 static const float StepPerRevolution = 16384;
 //Length of wire pulled out per revolution in mm
@@ -111,6 +121,8 @@ static U8 dataPD[25];
 
 static U8 dataISDU[25];
 
+static U8 dataRaw[SIZE_RAW_DATA];
+
 static float position=0;
 
 
@@ -119,6 +131,11 @@ static U16 adr = 0;
 static U8 coil = 0 ;
 
 FloatU16 floatToU16;
+
+// Current time
+static U64 currentTime = 0U;
+
+
 
 //**************************************************************************************************
 // Declarations of local (private) functions
@@ -319,8 +336,25 @@ int main(void)
                     reg[2] = dataPD[0] | (((U16)dataPD[1])<<8);
                     reg[3] = dataPD[2] | (((U16)dataPD[3])<<8);
 
+                    // Get current time
+                    SOFTTIMER_GetCurrentTime(&currentTime);
+                    
+                    currentTime = currentTime / 1000U;
+                    
+                    // Fill dataRaw by time stamp data
+                    for (int nByteNumber = 0U; nByteNumber < SIZE_TIME_STAMP; nByteNumber++)
+                    {
+                        dataRaw[nByteNumber] = (currentTime >> (((SIZE_TIME_STAMP - 1U) - nByteNumber) * 8U)) & 0xFF;
+                    }
+                    
+                    // Fill dataRaw by dataPD
+                    for (int nByteNumber = 0U; nByteNumber < SIZE_PAYLOAD; nByteNumber++)
+                    {
+                        dataRaw[SIZE_TIME_STAMP + nByteNumber] = dataPD[nByteNumber];
+                    } 
+                    
                     // Send data to Lora
-                    RAK811_SendRawData(dataPD, 8U);
+                    RAK811_SendRawData(dataRaw, SIZE_RAW_DATA);
 
 //                    // Did it receive OK?
 //                    SOFTTIMER_StartTimer(nTimerHandle, 120000);
