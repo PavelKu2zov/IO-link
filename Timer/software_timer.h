@@ -77,6 +77,8 @@ extern STD_RESULT SOFTTIMER_Create(uint8_t* const pTimerHandler);
 extern STD_RESULT SOFTTIMER_StartTimer(const uint8_t     nTimerHandle,
                                 const SOFTTIMER_SZ nTimerPeriod);
 
+extern STD_RESULT SOFTTIMER_GetCurrentTime(SOFTTIMER_SZ *const timeCurrent);
+
 // wait nTimerPeriod in us
 extern void SOFTTIMER_Delay(const uint8_t  nTimerHandle,const SOFTTIMER_SZ nTimerPeriod);
 // deinit all sofware timer

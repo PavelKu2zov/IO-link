@@ -26,60 +26,73 @@ if not b'OK \r\n' in answer:
     if not _debug:
         exit(1)   
 
+print ("Sending set_config: receiver mode...");
+port.write(b'at+set_config=lorap2p:transfer_mode:1\r\n')
+answer = port.read(5)
+print (b'Answer:' + answer)
+if not b'OK \r\n' in answer:
+    print ("No reply from module")
+    if not _debug:
+        exit(1)
+
 while True:        
-    print ("Sending set_config: transmitter mode"); 
-    port.write(b'at+set_config=lorap2p:transfer_mode:2\r\n')
-    answer = port.read(100)
-    print (b'Answer:' + answer)
-    if not b'OK \r\n' in answer:
-        print ("No reply from module")
-        if not _debug:
-            exit(1)
-
-    print ("Sending Modbus request..."); 
-    port.write(b'at+send=lorap2p:3A30313033303030303030303446380D0A\r\n')
-    answer = port.read(5)
-    print (b'Answer:' + answer)
-    if not b'OK \r\n' in answer:
-        print ("No reply from module")
-        if not _debug:
-            exit(1)   
+    # print ("Sending set_config: transmitter mode");
+    # port.write(b'at+set_config=lorap2p:transfer_mode:2\r\n')
+    # answer = port.read(100)
+    # print (b'Answer:' + answer)
+    # if not b'OK \r\n' in answer:
+    #     print ("No reply from module")
+    #     if not _debug:
+    #         exit(1)
+    #
+    # print ("Sending Modbus request...");
+    # port.write(b'at+send=lorap2p:3A30313033303030303030303446380D0A\r\n')
+    # answer = port.read(5)
+    # print (b'Answer:' + answer)
+    # if not b'OK \r\n' in answer:
+    #     print ("No reply from module")
+    #     if not _debug:
+    #         exit(1)
         
-    print ("Sending set_config: receiver mode..."); 
-    port.write(b'at+set_config=lorap2p:transfer_mode:1\r\n')
-    answer = port.read(5)
-    print (b'Answer:' + answer)
-    if not b'OK \r\n' in answer:
-        print ("No reply from module")
-        if not _debug:
-            exit(1)
+    # print ("Sending set_config: receiver mode...");
+    # port.write(b'at+set_config=lorap2p:transfer_mode:1\r\n')
+    # answer = port.read(5)
+    # print (b'Answer:' + answer)
+    # if not b'OK \r\n' in answer:
+    #     print ("No reply from module")
+    #     if not _debug:
+    #         exit(1)
     
-    time.sleep(1)    
-    answer = port.read(100)
-
+    time.sleep(0.5)
+    answer = port.readline()
+    port.reset_input_buffer()
+    print(answer)
     #answer = b'at+recv=-30,21,5:3A3031303330383245333341363439303130303031303037310D0A\r\n'
 
 
     if (b'at+recv' in answer):
         body = answer[answer.index(b':')+1:answer.index(b'\r')]
-        #print (body)
-        Modbus_ascii = b''
-        for i in range (0,len(body),2):
+        # print('Body ' + str(body))
+        Modbus_ascii = []
+        for i in range(0,len(body),2):
             st = body[i:i+2]
-            symbol = bytes([int(body[i:i+2],16)])
-            #print (st + b' -> ' + symbol)
-            Modbus_ascii += symbol
-        #print (b'Modbus packet: ' + Modbus_ascii)
-        
-        Position = Modbus_ascii[7:15]
-        Velocity = Modbus_ascii[15:23]
-        
-        print (b'Position = ' + Position)
-        print (b'Velocity = ' + Velocity)    
-        
-        Position = int(Position[0:4], 16)
-        Velocity = int(Velocity[0:4], 16)
-        
-        print ('Position = ' + str(Position))
-        print ('Velocity = ' + str(Velocity))
+            symbol =int(body[i:i+2],16)
+            # print(st + b' -> ' + symbol)
+            Modbus_ascii.append(symbol)
+        # print(b'Modbus packet: ' + Modbus_ascii)
+
+        PositionCode = int(''.join(map(str, list(reversed(Modbus_ascii[4:7])))))
+        FactorOfposition = 332.4 / 16384
+        Position = (PositionCode * FactorOfposition) * (100 / 67)
+        # Position = int(''.join(map(str, [1,2,3])))
+        # Velocity = Modbus_ascii[15:23]
+        #
+        # print (b'Position = ' + Position)
+        # print (b'Velocity = ' + Velocity)
+        #
+        # Position = int(Position[0:4], 16)
+        # Velocity = int(Velocity[0:4], 16)
+        #
+        print('Position = ' + str(Position))
+        # print ('Velocity = ' + str(Velocity))
    

@@ -113,7 +113,6 @@ static U8 SOFTTIMER_IRQ_exist = 0;
 
 static BOOLEAN SOFTTIMER_IsTimerNumberValid(const uint8_t nTimerHandle);
 
-static STD_RESULT SOFTTIMER_GetCurrentTime(SOFTTIMER_SZ *const timeCurrent);
 
 
 //**************************************************************************************************
@@ -429,6 +428,50 @@ void SOFTTIMER_Delay(const uint8_t  nTimerHandle,const SOFTTIMER_SZ nTimerPeriod
     
 }// end of SOFTTIMER_Delay()
 
+
+
+//**************************************************************************************************
+// @Function      SOFTTIMER_GetCurrentTime()
+//--------------------------------------------------------------------------------------------------
+// @Description   [description...]
+//--------------------------------------------------------------------------------------------------
+// @Notes
+//--------------------------------------------------------------------------------------------------
+// @ReturnValue   returnValue - [description...]
+//--------------------------------------------------------------------------------------------------
+// @Parameters    parameterZero - [description...]
+//                parameterOne  - [description...]
+//**************************************************************************************************
+STD_RESULT SOFTTIMER_GetCurrentTime(SOFTTIMER_SZ *const timeCurrent)
+{
+    STD_RESULT nFuncResult = RESULT_OK;
+
+
+
+    if ( (SOFTTIMER_HARD_NUM->CR1 & TIM_CR1_CEN) == TIM_CR1_CEN )
+    {
+        SOFTTIMER_IRQ_exist = 0;
+        *timeCurrent = (SOFTTIMER_Timer_MSB_Bits << SOFTTIMER_HARD_TIMER_RESOLUTION) + SOFTTIMER_HARD_NUM->CNT;
+
+        if (SOFTTIMER_IRQ_exist == 1)
+        {
+            *timeCurrent = (SOFTTIMER_Timer_MSB_Bits << SOFTTIMER_HARD_TIMER_RESOLUTION) + SOFTTIMER_HARD_NUM->CNT;
+            SOFTTIMER_IRQ_exist = 0;
+        }
+        nFuncResult = RESULT_OK;
+    }
+    else
+    {
+        nFuncResult = RESULT_NOT_OK;
+    }
+
+
+
+    return nFuncResult;
+} // end of SOFTTIMER_GetCurrentTime()
+
+
+
 //**************************************************************************************************
 //==================================================================================================
 // Definitions of local (private) functions
@@ -456,45 +499,5 @@ static BOOLEAN SOFTTIMER_IsTimerNumberValid(const uint8_t nTimerHandle)
 } // end of SOFTTIMER_IsTimerNumberValid()
 
 
-
-//**************************************************************************************************
-// @Function      SOFTTIMER_GetCurrentTime()
-//--------------------------------------------------------------------------------------------------
-// @Description   [description...]
-//--------------------------------------------------------------------------------------------------
-// @Notes
-//--------------------------------------------------------------------------------------------------
-// @ReturnValue   returnValue - [description...]
-//--------------------------------------------------------------------------------------------------
-// @Parameters    parameterZero - [description...]
-//                parameterOne  - [description...]
-//**************************************************************************************************
-static STD_RESULT SOFTTIMER_GetCurrentTime(SOFTTIMER_SZ *const timeCurrent)
-{   
-    STD_RESULT nFuncResult = RESULT_OK;
-    
-    
-    
-    if ( (SOFTTIMER_HARD_NUM->CR1 & TIM_CR1_CEN) == TIM_CR1_CEN )
-    {
-        SOFTTIMER_IRQ_exist = 0;
-        *timeCurrent = (SOFTTIMER_Timer_MSB_Bits << SOFTTIMER_HARD_TIMER_RESOLUTION) + SOFTTIMER_HARD_NUM->CNT;
-
-        if (SOFTTIMER_IRQ_exist == 1)
-        {
-            *timeCurrent = (SOFTTIMER_Timer_MSB_Bits << SOFTTIMER_HARD_TIMER_RESOLUTION) + SOFTTIMER_HARD_NUM->CNT;
-            SOFTTIMER_IRQ_exist = 0;
-        }
-        nFuncResult = RESULT_OK;
-    }
-    else
-    {
-        nFuncResult = RESULT_NOT_OK;    
-    }
-    
-    
-    
-    return nFuncResult;
-} // end of SOFTTIMER_GetCurrentTime()
 
 //****************************************** end of file *******************************************
