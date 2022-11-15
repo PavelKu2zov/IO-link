@@ -97,8 +97,11 @@ typedef union FloatU16_union
 // Size payload
 #define SIZE_PAYLOAD            (8U)
 
+// Size CRC
+#define SIZE_CRC                (1U)
+
 // Size raw data
-#define SIZE_RAW_DATA           (SIZE_TIME_STAMP + SIZE_PAYLOAD)
+#define SIZE_RAW_DATA           (SIZE_TIME_STAMP + SIZE_PAYLOAD + SIZE_CRC)
 
 
 // Step per revolution
@@ -352,6 +355,9 @@ int main(void)
                     {
                         dataRaw[SIZE_TIME_STAMP + nByteNumber] = dataPD[nByteNumber];
                     } 
+                    
+                    // Calculate CRC8
+                    dataRaw[SIZE_TIME_STAMP + SIZE_PAYLOAD] = 0U; // CRC8();
                     
                     // Send data to Lora
                     RAK811_SendRawData(dataRaw, SIZE_RAW_DATA);
