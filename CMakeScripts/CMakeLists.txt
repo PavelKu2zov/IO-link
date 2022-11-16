@@ -36,6 +36,7 @@ file(GLOB_RECURSE CIRCULAR_BUFFER "${CMAKE_SOURCE_DIR}/../Circular_Buffer/Latest
 file(GLOB_RECURSE SOFT_TIMER "${CMAKE_SOURCE_DIR}/../Timer/software_timer.c")
 file(GLOB_RECURSE TERMINAL "${CMAKE_SOURCE_DIR}/../Terminal/terminal.c")
 file(GLOB_RECURSE MODULE_RAK811 "${CMAKE_SOURCE_DIR}/../ModuleRAK811/ModuleRAK811.c")
+file(GLOB_RECURSE CHECKSUM "${CMAKE_SOURCE_DIR}/../CheckSum/checksum.c")
 
 
 file(GLOB_RECURSE MAIN_SOURCES
@@ -69,6 +70,7 @@ include_directories(${CMAKE_SOURCE_DIR}/../Terminal)
 include_directories(${CMAKE_SOURCE_DIR}/../Timer)
 include_directories(${CMAKE_SOURCE_DIR}/../Circular_Buffer/Latest)
 include_directories(${CMAKE_SOURCE_DIR}/../ModuleRAK811)
+include_directories(${CMAKE_SOURCE_DIR}/../CheckSum)
 
 
 
@@ -80,6 +82,7 @@ add_executable( ${PROJECT_NAME}
         ${TERMINAL}
         ${MODULE_RAK811}
         ${CIRCULAR_BUFFER}
+        ${CHECKSUM}
 )
 
 

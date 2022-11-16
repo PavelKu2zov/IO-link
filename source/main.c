@@ -57,6 +57,7 @@
 #include "Data_layer.h"
 #include "Physical_layer.h"
 #include "software_timer.h"
+#include "checksum.h"
 
 #include "ModuleRAK811.h"
 
@@ -343,7 +344,7 @@ int main(void)
                     SOFTTIMER_GetCurrentTime(&currentTime);
                     
                     currentTime = currentTime / 1000U;
-                    
+
                     // Fill dataRaw by time stamp data
                     for (int nByteNumber = 0U; nByteNumber < SIZE_TIME_STAMP; nByteNumber++)
                     {
@@ -354,10 +355,11 @@ int main(void)
                     for (int nByteNumber = 0U; nByteNumber < SIZE_PAYLOAD; nByteNumber++)
                     {
                         dataRaw[SIZE_TIME_STAMP + nByteNumber] = dataPD[nByteNumber];
-                    } 
-                    
+                    }
+
                     // Calculate CRC8
-                    dataRaw[SIZE_TIME_STAMP + SIZE_PAYLOAD] = 0U; // CRC8();
+                    dataRaw[SIZE_TIME_STAMP + SIZE_PAYLOAD] = CH_SUM_CalculateCRC8(dataRaw,
+                                                                                SIZE_TIME_STAMP + SIZE_PAYLOAD);
                     
                     // Send data to Lora
                     RAK811_SendRawData(dataRaw, SIZE_RAW_DATA);

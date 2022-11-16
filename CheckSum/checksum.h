@@ -1,55 +1,46 @@
 //**************************************************************************************************
-// @Module        SOFTWARE_TIMER
-// @Filename      software_timer.h
+// @Module        CH_SUM
+// @Filename      checksum.h
 //--------------------------------------------------------------------------------------------------
-// @Description   Interface of the MODULE module.
-//                [Description...]
+// @Description   Interface of the checksum module.
+//
 //--------------------------------------------------------------------------------------------------
 // @Version       1.0.0
 //--------------------------------------------------------------------------------------------------
-// @Date          XX.XX.XXXX
+// @Date          xx.xx.xxxx
 //--------------------------------------------------------------------------------------------------
 // @History       Version  Author      Comment
-// XX.XX.XXXX     1.0.0    XXX         First release.
+// XX.XX.XXXX     1.0.0    KPS         First release.
 //**************************************************************************************************
 
-#ifndef SOFTWARE_TIMER_H
-#define SOFTWARE_TIMER_H
-
+#ifndef CH_SUM_H
+#define CH_SUM_H
 
 
 //**************************************************************************************************
 // Project Includes
 //**************************************************************************************************
 
-
-// Get configuration of the program module
 #include "stm32f10x.h"
 
-#include "software_timer_cfg.h"
+//#include "compiler.h"
 
-#include "platform.h"
+//#include "general_types.h"
 
-#include "general_types.h"
+#include "checksum_cfg.h"
 
 //**************************************************************************************************
 // Declarations of global (public) data types
 //**************************************************************************************************
 
-typedef enum SOFTIMER_EVENT_enum
-{
-    NOT_EXPIRED=0,
-    EXPIRED
-}SOFTTIMER_EVENT;
-
+// None.
 
 
 //**************************************************************************************************
 // Definitions of global (public) constants
 //**************************************************************************************************
 
-// None.
-
+#define RECORD_MAN_SIZE_CRC8                (1U)
 
 
 //**************************************************************************************************
@@ -59,32 +50,14 @@ typedef enum SOFTIMER_EVENT_enum
 // None.
 
 
-
 //**************************************************************************************************
 // Declarations of global (public) functions
 //**************************************************************************************************
+extern uint8_t CH_SUM_CalculateCRC8(const uint8_t* data, uint32_t len);
 
-// Init timer
-extern void SOFTTIMER_HardInit(void);
-
-// Get Event
-extern STD_RESULT SOFTTIMER_GetEvent(const uint8_t nTimerHandler, SOFTTIMER_EVENT *const event);
-       
-// Create softtimer       
-extern STD_RESULT SOFTTIMER_Create(uint8_t* const pTimerHandler);
-
-//start timer
-extern STD_RESULT SOFTTIMER_StartTimer(const uint8_t     nTimerHandle,
-                                const SOFTTIMER_SZ nTimerPeriod);
-
-// Get current time
-extern STD_RESULT SOFTTIMER_GetCurrentTime(SOFTTIMER_SZ *const timeCurrent);
-
-// wait nTimerPeriod in us
-extern void SOFTTIMER_Delay(const uint8_t  nTimerHandle,const SOFTTIMER_SZ nTimerPeriod);
-// deinit all sofware timer
-extern STD_RESULT SOFTTIMER_DeInit(void);
-
-#endif // #ifndef SOFTWARE_TIMER_H
+extern uint8_t CH_SUM_CalculateCRC8WithBegin(const uint8_t* data,
+                                      uint32_t len,
+                                      uint8_t nCrcBegin);
+#endif // #ifndef W25Q_H
 
 //****************************************** end of file *******************************************

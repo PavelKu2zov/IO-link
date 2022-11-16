@@ -4,6 +4,20 @@ _debug = True
 import time
 import serial
 
+def CalculateCRC8(data):
+    crc = 0xff
+    for index,item in enumerate(data):
+        crc = crc ^ data[index]
+        for i in range(8):
+            if crc & 0x80:
+                crc = ((crc << 1) & 0xff) ^ 0x31
+            else:
+                crc = (crc << 1) & 0xff
+    return crc
+
+
+
+
 port = serial.Serial('COM4', 115200, timeout=1)
 
 port.reset_input_buffer()
@@ -35,64 +49,42 @@ if not b'OK \r\n' in answer:
     if not _debug:
         exit(1)
 
-while True:        
-    # print ("Sending set_config: transmitter mode");
-    # port.write(b'at+set_config=lorap2p:transfer_mode:2\r\n')
-    # answer = port.read(100)
-    # print (b'Answer:' + answer)
-    # if not b'OK \r\n' in answer:
-    #     print ("No reply from module")
-    #     if not _debug:
-    #         exit(1)
-    #
-    # print ("Sending Modbus request...");
-    # port.write(b'at+send=lorap2p:3A30313033303030303030303446380D0A\r\n')
-    # answer = port.read(5)
-    # print (b'Answer:' + answer)
-    # if not b'OK \r\n' in answer:
-    #     print ("No reply from module")
-    #     if not _debug:
-    #         exit(1)
-        
-    # print ("Sending set_config: receiver mode...");
-    # port.write(b'at+set_config=lorap2p:transfer_mode:1\r\n')
-    # answer = port.read(5)
-    # print (b'Answer:' + answer)
-    # if not b'OK \r\n' in answer:
-    #     print ("No reply from module")
-    #     if not _debug:
-    #         exit(1)
-    
-    time.sleep(0.5)
+while True:
     answer = port.readline()
     port.reset_input_buffer()
-    print(answer)
-    #answer = b'at+recv=-30,21,5:3A3031303330383245333341363439303130303031303037310D0A\r\n'
-
+    # print(answer)
 
     if (b'at+recv' in answer):
         body = answer[answer.index(b':')+1:answer.index(b'\r')]
         # print('Body ' + str(body))
-        Modbus_ascii = []
+        bodyList = []
         for i in range(0,len(body),2):
-            st = body[i:i+2]
-            symbol =int(body[i:i+2],16)
-            # print(st + b' -> ' + symbol)
-            Modbus_ascii.append(symbol)
-        # print(b'Modbus packet: ' + Modbus_ascii)
+            symbol = int(body[i:i+2],16)
+            bodyList.append(symbol)
+        checkSumReceived = bodyList[len(bodyList)-1]
+        checkSumCalculated = CalculateCRC8(bodyList[0:len(bodyList) - 1])
+        # print('Check sum received = ' + hex(checkSumReceived))
+        # print('Calculate check sum = ' + hex(checkSumCalculated))
+        if checkSumReceived == checkSumCalculated:
+            print("")
 
-        PositionCode = int(''.join(map(str, list(reversed(Modbus_ascii[4:7])))))
-        FactorOfposition = 332.4 / 16384
-        Position = (PositionCode * FactorOfposition) * (100 / 67)
-        # Position = int(''.join(map(str, [1,2,3])))
-        # Velocity = Modbus_ascii[15:23]
-        #
-        # print (b'Position = ' + Position)
-        # print (b'Velocity = ' + Velocity)
-        #
-        # Position = int(Position[0:4], 16)
-        # Velocity = int(Velocity[0:4], 16)
-        #
-        print('Position = ' + str(Position))
-        # print ('Velocity = ' + str(Velocity))
-   
+            TimeStamp = int(body[0:12],16)
+            print("Time stamp [ms] = {}".format(TimeStamp))
+
+            PositionCode = int(body[21:28],16)
+            # print("PositionCode = {}".format(PositionCode))
+            FactorOfposition = 332.4 / 16384
+            Position = (PositionCode * FactorOfposition)
+
+            # print("body[13] = {}".format(body[13:15]))
+
+            if body[13:15] == b'FF':
+                # print(body[12:20])
+                Velocity = int('FFFFFFFF',16) - int(body[12:20], 16)
+            else:
+                Velocity = int(body[13:20], 16) * (-1)
+
+            print('Position = ' + str(Position))
+            print ('Velocity = ' + str(Velocity))
+
+    time.sleep(0.5)
